@@ -7,6 +7,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .DS_Store
+.vercel/
 data/**
 !data/.gitkeep
 benchmarks/results/*.json
@@ -17,3 +18,4 @@ benchmarks/results/*.md
 !benchmarks/results/measured-1000000.md
 dist/
 *.egg-info/
+.env*

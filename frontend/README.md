@@ -47,6 +47,18 @@ Optional browser checks use Playwright and an existing Chrome/Chromium. Start th
 
 ## Hosting
 
-`dist/` is the generated static output. `.openai/hosting.json` retains the existing Sites project identity. The hosted website is owner-private. Preserve its audience when publishing updates. Source and deployment contain only the app and synthetic evidence.
+Production URLs: [How it works](https://bmoquant.vercel.app/) and [Research workspace](https://bmoquant.vercel.app/workspace.html). The project uses Vercel Authentication for all deployments, including production, to retain private access. The connected GitHub repository uses `main` as its production branch.
+
+Vercel builds this frontend from the repository root using the tracked `vercel.json`: framework **Other**, build command `node frontend/build.mjs`, output directory `frontend/dist`, and no dependency installation. The Python engine is not deployed as a web service.
+
+After signing into Vercel and linking the project, publish from the repository root:
+
+```bash
+npx --yes vercel@latest deploy --prod
+```
+
+`.vercelignore` limits the upload to the frontend source and synthetic evidence. It excludes local previews, dependencies, generated output, and the previous Sites configuration. `.vercel/` contains checkout-local project settings and is ignored by Git. Preserve the project's configured deployment protection when publishing updates.
+
+The earlier `.openai/hosting.json` identity is retained for the original Sites publication; Vercel does not use it.
 
 The Python CLI/API remains the way to prepare other files. This frontend is a transparent walkthrough and a working research view over the bundled output.

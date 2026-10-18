@@ -33,6 +33,8 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory frontend/dist
 
 Open **http://127.0.0.1:4173** for the explanation or **http://127.0.0.1:4173/workspace.html** for the use case. The frontend has no JavaScript runtime dependencies. Its included evidence was exported from the real Python engine; it does not execute new pipeline runs or SQL in the browser. [Frontend instructions](frontend/README.md) explain refresh, verification, downloads, and hosting.
 
+Vercel deployment: [How it works](https://bmoquant.vercel.app/) and [Research workspace](https://bmoquant.vercel.app/workspace.html). Vercel Authentication protects both preview and production access. The repository-root `vercel.json` builds only the static frontend; the Python pipeline runs offline.
+
 ## Architecture
 
 ```mermaid
