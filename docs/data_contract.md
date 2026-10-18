@@ -29,7 +29,7 @@ Paths in YAML resolve relative to the **YAML file**, not the shell's current dir
 | `input.date_format` | `%Y-%m-%d`; Polars/Chrono date parsing format |
 | `schema` | Defaults to canonical seven required names; specify every required name when overriding |
 | `validation.duplicate_policy` | `quarantine` |
-| `validation.invalid_price_policy` | `quarantine`; applies to all financial invariants, including volume/OHLC/overflow |
+| `validation.invalid_price_policy` | `quarantine`; applies to row financial invariants, including volume/OHLC and supplied non-finite returns; newly calculated overflow always stops the run |
 | `validation.missing_value_policy` | `reject`; bundled demo explicitly sets `quarantine` |
 | `validation.malformed_value_policy` | `quarantine` |
 | `validation.extreme_return_threshold` | `0.25`; absolute simple price return strictly above this value warns |

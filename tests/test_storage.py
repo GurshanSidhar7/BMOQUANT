@@ -48,6 +48,20 @@ def test_rejected_run_preserves_previous_snapshot(config):
     assert read_snapshot(config.output.path).version == first.snapshot.version
 
 
+def test_numeric_overflow_preserves_previous_snapshot(config):
+    first = ingest(config)
+    before = load_prices(dataset=config.output.path)
+    raw = pl.read_csv(config.input.path).with_columns(
+        *[pl.lit(1e308).alias(c) for c in ("open", "high", "low", "close")],
+        pl.lit(100).alias("volume"),
+    )
+    raw.write_csv(config.input.path)
+    with pytest.raises(DataValidationError, match="No new snapshot was published"):
+        ingest(config)
+    assert read_snapshot(config.output.path).version == first.snapshot.version
+    assert load_prices(dataset=config.output.path).equals(before)
+
+
 def test_refuses_unmanaged_directory(tmp_path, prices):
     (tmp_path / "valuable.txt").write_text("keep me")
     with pytest.raises(StorageError, match="unmanaged"):

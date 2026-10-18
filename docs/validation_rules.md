@@ -17,8 +17,7 @@ Missing files, missing mapped columns, colliding normalized headers, malformed C
 | `nonfinite_price` | NaN / positive or negative infinity in any OHLC value | `invalid_price_policy` |
 | `negative_volume` | Volume < 0 | `invalid_price_policy` |
 | `invalid_ohlc` | High below open/close/low, or low above open/close/high | `invalid_price_policy` |
-| `nonfinite_return` | Non-finite supplied or recomputed simple/log return | `invalid_price_policy` |
-| `nonfinite_analytics` | Derived dollar volume or rolling statistic overflows | `invalid_price_policy` |
+| `nonfinite_return` | Non-finite caller-supplied simple/log return | `invalid_price_policy` |
 
 Null first returns and insufficient-history rolling values are expected, not errors. A row can violate several categories; category totals can exceed quarantined row totals. Every row is counted exactly once in either clean or quarantine. `empty_dataset` is a dataset-level error count of one, not an extra quarantined record.
 
@@ -31,7 +30,7 @@ Only two policy values exist:
 
 When a row has multiple categories, any applicable `reject` takes precedence for the entire run. There is no implicit dropping, deduplication, imputation, or partial publication after rejection. If no valid rows remain, rejection applies regardless of per-row settings. Structural failures before materialization do not promise row-level artifacts.
 
-Financial validation precedes calculation. If finite positive inputs nevertheless overflow derived Float64 arithmetic, offending rows are quarantined and retained-observation analytics are recomputed until finite. Original raw values remain in quarantine. This unusual fallback favors correctness over speed.
+Financial validation precedes calculation. Analytics are calculated once on the retained input. If finite positive inputs nevertheless overflow derived Float64 arithmetic, the whole run stops with an actionable `DataValidationError` and example source-row references, regardless of row policies. Review the input units and prices before rerunning. The previous saved snapshot remains active. This calculation failure does not produce a new report/quarantine bundle. There is no iterative row removal or automatic repair of the price history.
 
 ## Warnings retained in clean data
 

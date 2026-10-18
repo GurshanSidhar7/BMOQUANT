@@ -137,34 +137,21 @@ def validate_prices(
     )
     bad = frame.filter(pl.col("_errors").list.len() > 0)
     clean = frame.filter(pl.col("_errors").list.len() == 0)
-    # Finite positive prices can still overflow a ratio or dollar-volume product.
-    # Recompute after quarantine so all retained returns use the prior retained observation.
-    while True:
-        computed = calculate_analytics(clean.lazy()).collect()
-        overflow = computed.with_columns(
-            _codes(
-                {
-                    "nonfinite_return": pl.any_horizontal(
-                        pl.col(c).is_not_null() & ~pl.col(c).is_finite()
-                        for c in ("simple_return", "log_return")
-                    ),
-                    "nonfinite_analytics": pl.any_horizontal(
-                        pl.col(c).is_not_null() & ~pl.col(c).is_finite()
-                        for c in ANALYTIC_COLUMNS
-                        if c not in ("simple_return", "log_return")
-                    ),
-                }
-            ).alias("_computed_errors")
+    # Calculate once after removing invalid inputs. Arithmetic overflow needs input
+    # review, rather than repeated row removal that changes the price history.
+    clean = calculate_analytics(clean.lazy()).collect()
+    overflow = clean.filter(
+        pl.any_horizontal(
+            pl.col(c).is_not_null() & ~pl.col(c).is_finite() for c in ANALYTIC_COLUMNS
         )
-        invalid = overflow.filter(pl.col("_computed_errors").list.len() > 0)
-        if invalid.is_empty():
-            clean = computed
-            break
-        new_bad = invalid.select(frame.columns).with_columns(
-            invalid["_computed_errors"].alias("_errors")
+    )
+    if not overflow.is_empty():
+        example = overflow.select("symbol", "date", "source", "_source_row").head(3).to_dicts()
+        raise DataValidationError(
+            f"Derived calculations exceed the supported numeric range in {overflow.height} "
+            f"rows. Review input units and prices. Examples: {example}. "
+            "No new snapshot was published."
         )
-        bad = pl.concat([bad, new_bad], how="vertical")
-        clean = overflow.filter(pl.col("_computed_errors").list.len() == 0).select(frame.columns)
     errors = _counts(bad, "_errors")
     rejected = [category for category in errors if config.policy_for(category) == "reject"]
     if frame.is_empty() or clean.is_empty():

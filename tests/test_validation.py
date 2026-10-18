@@ -84,14 +84,11 @@ def test_missing_weekday_sessions_count_is_explicitly_approximate():
     assert "missing_expected_sessions" not in validate_prices(frame).warnings
 
 
-def test_nonfinite_return_is_quarantined_and_recomputed():
-    frame = make_prices([1e-308, 1e308, 1e-308]).with_columns(
-        pl.lit(0, dtype=pl.Int64).alias("volume")
-    )
-    result = validate_prices(frame)
-    assert result.errors["nonfinite_return"] == 1
-    assert result.clean.height == 2
-    assert result.clean["simple_return"].to_list() == [None, 0.0]
+@pytest.mark.parametrize("prices,volume", [([1e-308, 1e308], 0), ([1e308], 100)])
+def test_numeric_overflow_stops_for_input_review(prices, volume):
+    frame = make_prices(prices).with_columns(pl.lit(volume, dtype=pl.Int64).alias("volume"))
+    with pytest.raises(DataValidationError, match="Review input units and prices"):
+        validate_prices(frame)
 
 
 def test_existing_nonfinite_returns_are_detected():
