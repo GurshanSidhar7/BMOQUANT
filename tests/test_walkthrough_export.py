@@ -57,3 +57,27 @@ def test_failed_test_evidence_cannot_be_published(tmp_path):
     with pytest.raises(ValueError, match="failing or empty"):
         exporter.export_walkthrough(tmp_path / "assets", junit)
     assert not (tmp_path / "assets").exists()
+
+
+def test_workspace_covers_every_retained_security_and_keeps_prior_history(bundle):
+    directory, result = bundle
+    securities = result["workspace"]["securities"]
+    assert len(securities) == 50
+    assert sum(security["rows"] for security in securities) == result["report"]["valid_row_count"]
+    keys = set()
+    for security in securities:
+        rows = json.loads((directory / security["path"]).read_text())
+        assert len(rows) == security["rows"]
+        assert rows[0]["date"] == security["start"]
+        assert rows[-1]["date"] == security["end"]
+        for row in rows:
+            key = (row["symbol"], row["source"], row["date"])
+            assert key not in keys
+            keys.add(key)
+            assert row["symbol"] == security["symbol"]
+            assert row["source"] == security["source"]
+        if security["symbol"] == "SYN0001":
+            expected = {row["date"]: row for row in result["series"]["SYN0001"]}
+            for row in rows:
+                assert row["simple_return"] == expected[row["date"]]["simple_return"]
+                assert row["realized_vol_20"] == expected[row["date"]]["realized_vol_20"]

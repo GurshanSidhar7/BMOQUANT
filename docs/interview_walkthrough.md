@@ -1,167 +1,112 @@
-# Interview walkthrough — Tuesday, October 20, 2026
+# Explaining Research Data Engine
 
-This is an independent portfolio project. Do not imply that BMO commissioned, uses, or endorses it. Demonstrations and benchmarks use **synthetic prices**. Describe what the code and saved results actually demonstrate.
+This is an independent portfolio project by Gurshan Sidhar. The bundled prices are synthetic. Describe the work you understand and can demonstrate; BMO did not commission or endorse it.
 
-## A. Thirty-second introduction
+## Start with the problem
 
-“I built Research Data Engine to make repeated financial data cleaning reproducible. It takes messy OHLCV CSVs, normalizes them with Polars, applies explicit financial rules, and preserves invalid records in quarantine. It publishes typed Parquet snapshots and exposes them through DuckDB SQL and a Python API. I focused on verifiable financial calculations, safe reruns, and measured performance. The examples are synthetic, and the project is independent of BMO.”
+“I wanted to reduce the repeated cleaning that happens before a stock-price analysis. This project reads price CSVs, checks their records, calculates a few standard measures, and saves a clean file that another script can use. It also keeps a separate file of unusable records with the reasons. I used synthetic data to make the example repeatable.”
 
-## B. Ninety-second technical walkthrough
+That is the central project. Performance measurements and publication safeguards support it; they do not need to lead the explanation.
 
-“The input contract is YAML validated by Pydantic. CSV discovery is deterministic, and Polars scans all raw fields as strings so one file's inferred types cannot silently change the schema. Lazy expressions normalize symbols, parse dates, and cast numbers while retaining raw values and file/record provenance.
+## The five steps, in plain language
 
-“Validation distinguishes hard errors from warnings. Nonpositive prices, inconsistent OHLC ranges, negative volumes, parse failures, and duplicate observation keys use explicit quarantine or rejection policies. Every duplicate member is quarantined. An extreme price move stays in the data with a warning because it could be legitimate. The observation key and all lag calculations include source, so feeds are not silently merged.
+### 1. Read the file
 
-“I calculate price and log returns and trailing sample volatility after validation. Full 20/30-return windows need 21/31 prices. I preserve source boundaries and historical context, test against NumPy, and never interpolate missing sessions.
+A CSV is a plain-text spreadsheet. Each row describes a stock on a date: opening price, highest price, lowest price, closing price, and volume (shares traded). A source label identifies the feed.
 
-“Each run writes an immutable compressed Parquet snapshot and then switches one manifest. DuckDB queries that snapshot directly. Benchmarks verify complete result equivalence before timing. On this machine, one-million-row CSV ingestion favored Polars by 14.72×, sorted rolling volatility by 1.95×, and the Parquet aggregate favored DuckDB by 3.90×. Those are measured warm-cache workloads, not universal guarantees.”
+The project remembers the file and source-record number. If something goes wrong, the researcher can find the original record.
 
-## C. Five architectural decisions and trade-offs
+Implementation: `ingestion.py` discovers files in a predictable order. Polars reads fields as text first so mixed values do not silently change a column's type.
 
-1. **Polars expressions with a deliberate materialization boundary.** Lazy normalization and scan pushdown are useful; full duplicate/quarantine reporting still needs an in-memory global view. Simplicity and correctness are favored over claiming out-of-core scale.
-2. **All-member duplicate quarantine and independent sources.** No arbitrary first/last choice or silent feed priority. It can discard more usable observations than a reviewed source-ranking policy, but it makes ambiguity explicit.
-3. **Parquet snapshots with an atomic manifest.** Typed compressed data, no append duplication, prior snapshots available to readers. Retention consumes disk; concurrent writers and distributed publication are not implemented.
-4. **DuckDB as the local SQL layer.** Direct Parquet OLAP without a server. PostgreSQL would serve centralized transactional/multi-user requirements better. The SQL restrictions are local safeguards, not a hostile-query sandbox.
-5. **Correctness-gated, scoped benchmarks.** Full results, nulls, and window definitions match before timing; independent worker processes, warmup, medians, and native RSS measurements. Warm caches, three repetitions, synthetic distributions, and sampled memory limit generalization.
+### 2. Make the fields consistent
 
-## D. Ten likely technical questions
+A small YAML configuration maps incoming names such as `ticker` to the standard `symbol` column. It defines the date format. The code trims and uppercases symbols, converts dates to dates, prices to decimal numbers, and volume to whole numbers.
 
-### 1. Why use Polars?
+Text such as `not-a-date` is marked as a parsing error. It is not silently treated as a valid date or corrected by guessing.
 
-It expresses normalization and financial validation as column operations and can optimize lazy scans and use native parallelism. The measured workloads support using it here, but pandas remains convenient for small analyses and ecosystem integrations. Sorting and materialization can still require substantial memory. Discuss measured workload-specific results, not a blanket claim that Polars always wins.
+Implementation: `config.py` checks settings; `transformations.py` applies the mappings and conversions.
 
-### 2. Why DuckDB instead of PostgreSQL?
+### 3. Check the records
 
-The user is a researcher querying local Parquet files, so an embedded analytical engine removes service setup and data copying. PostgreSQL becomes attractive for shared operational data, concurrent transactional writes, identity/access control, or an existing managed platform. This MVP is not a centralized market-data service.
+An **error** means the record violates the rules: missing required values, a broken date, a nonpositive price, negative volume, impossible high/low relationships, or a duplicate stock/date/source. Both members of a duplicate pair are set aside because there is no rule for choosing the better copy.
 
-### 3. What is lazy evaluation?
+A **warning** means a record deserves review: a large price move, a large volume change, repeated unchanged prices, or an approximate weekday gap. Warnings stay in the clean data because unusual does not necessarily mean wrong.
 
-A LazyFrame describes a computation without immediately producing its rows. At `collect`, Polars optimizes and executes the plan. This allows transformations to be combined or moved, but it does not automatically make global sorts or duplicate detection memory-free. Our benchmark includes `collect`; it never times only lazy plan construction.
+**Quarantine** means saving offending rows separately with reasons. Configuration can instead reject the whole run. Missing required values reject by default; the demonstration explicitly uses quarantine so all example errors can be inspected.
 
-### 4. What is predicate pushdown?
+The demo contains **65,201 input rows = 65,194 retained rows + 7 quarantined rows**. Some rows fail more than one check, so reason counts can exceed seven.
 
-Move a filter toward the scan so the engine can avoid unnecessary rows or row groups. Projection pushdown similarly selects only needed columns. `examples/research_example.py` prints the optimized Parquet plan. Physical savings depend on statistics and data layout; a pushed filter does not guarantee every row group can be skipped. Filtering before calculating lagged returns can change their meaning, so the public slices filter stored analytics afterward.
+Implementation: `validation.py`. It checks the input, calculates analytics once on retained rows, and adds warnings. If the arithmetic exceeds the supported numeric range, it stops for input review. It does not repeatedly remove observations to repair a calculation.
 
-### 5. Why Parquet?
+### 4. Calculate a few useful measures
 
-It preserves types, compresses columnar data, and lets analytical readers project columns and filter row groups. CSV is a useful raw interchange format but requires parsing and lacks a reliable stored schema. Tiny partitions would add overhead here, so each snapshot has one clean file and one quarantine file.
+The retained rows are sorted by stock, source, and date. Each source stays separate.
 
-### 6. How do you detect duplicates?
+- **Price return:** current close ÷ previous retained close − 1. A move from 100 to 102 is a 2% return. If a date is missing, this return spans that gap.
+- **Recent volatility:** variation in the last 20 log returns. It describes recent price swings. It needs 21 retained prices, and stays blank until enough history exists.
+- **Average volume:** mean shares traded over the last 20 retained observations. It is a simple activity measure.
 
-Polars computes the group size over `(symbol, date, source)` across all discovered files. Any size above one marks every group member. Identical duplicates and conflicting duplicate values both quarantine. Different sources stay separate; source priority and security-master reconciliation are future work.
+The precise volatility definition is sample standard deviation (`ddof=1`) of 20 trailing log returns × √252. Log return is ln(current close) − ln(previous close). The library also provides a 30-return window and close × volume as an approximate dollar-volume measure.
 
-### 7. How do you validate financial prices?
+These are unadjusted price measures. Splits and dividends are not handled. None is a prediction, trading strategy, or proof of investment value.
 
-Require finite, positive OHLC, nonnegative integer volume, high at least open/close/low, and low at most open/close/high. Detect nulls, parse failures, duplicate keys, and nonfinite derived values. Keep raw mapped fields with reasons. Large returns, volume changes, and stale closes are warnings. A valid-looking value is not necessarily economically correct; adjustments and vendor reconciliation are not implemented.
+Implementation: `analytics.py`. Calculations use current and earlier observations. Date selections read the stored results, preserving pre-start history.
 
-### 8. How do you prevent data leakage?
+### 5. Save the result and use it
 
-Lags and trailing windows group by symbol/source, use deterministic date order, and include only the current and prior retained observations. Tests confirm appending future rows does not change history. API date slices retain already-calculated pre-start context. Closing prices/volumes are only known after the close: a strategy using these features must model later execution/availability. The app does not implement point-in-time fundamentals, revision timestamps, or a backtest execution model, so do not claim broader leakage prevention.
+The project saves the retained data as **Parquet**, a compact file format that remembers dates and number types. It also saves quarantined records and a JSON report of counts, settings, and input fingerprints.
 
-### 9. How would you scale the pipeline?
+A complete new version becomes current only after its files are written. Reruns replace the active dataset rather than appending the same observations. If publication fails, the old version remains available. This is a local single-writer approach.
 
-Profile actual data sizes and bottlenecks first. Add stable security IDs, exchange calendars, corporate actions, and point-in-time/revision contracts before trusting larger research results. Then consider partitioned immutable raw inputs, incremental keyed validation, version/catalog management, object storage, orchestration, access controls, and observable retries. Partitioning or distributing duplicate checks introduces cross-partition/global-state correctness requirements. None of those institutional extensions is presented as implemented.
+**DuckDB** lets a researcher ask SQL questions directly against the saved Parquet. The Python API exposes the same stored data as Polars frames.
 
-### 10. How do you know the benchmark is fair?
+Implementation: `pipeline.py` joins the steps; `storage.py` saves versions; `queries.py` reads them.
 
-Inputs, group keys, date ranges, null handling, sample-standard-deviation definitions, and materialized outputs match. Every workload passes a full-result pandas comparison before any timed recording. pandas uses vectorized dates and PyArrow pushdown. Setup and B/C/D preloads are excluded for both sides, while A/E include reads. Report wall and CPU separately; use fresh engine/workload processes and record RSS samples, versions, hardware, and input hashes. Acknowledge warm caches, native thread defaults, different execution models, limited repetitions, synthetic distribution, and sandbox CPU-feature notices. No 5M benchmark was executed.
+## The two-page demonstration
 
-## E. Exact five-minute live demonstration
-
-Before the interview, install dependencies and run the tests so the demonstration needs no network:
-
-```bash
-uv sync --locked
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-```
-
-**0:00–0:40 — Help and the complete synthetic pipeline.**
-
-```bash
-uv run research-data --help
-uv run research-data demo
-```
-
-Expected: five commands; a SYNTHETIC label and approximate weekday calendar; 65,201 input rows, 65,194 valid rows, 7 quarantine rows; errors/warnings; a SQL security summary; printed artifact paths.
-
-**0:40–1:30 — Show auditable invalid records.**
-
-```bash
-uv run python - <<'PY'
-import json
-import polars as pl
-from research_data_engine import read_snapshot
-s = read_snapshot("data/processed/equity_prices")
-r = json.loads(s.report_path.read_text())
-print("Errors:", r["errors_by_category"])
-print("Warnings:", r["warning_counts"])
-print(pl.read_parquet(s.directory / "quarantine.parquet")
-      .select("symbol", "date", "_source_row", "_errors", "_parse_errors"))
-PY
-```
-
-Expected: both duplicate rows retained in quarantine; a malformed date distinguished from a missing symbol; positive/negative financial checks; warnings on clean observations. Explain why a large movement is not automatically a bad record.
-
-**1:30–2:15 — Query stored analytics.**
-
-```bash
-uv run research-data query --sql examples/security_summary.sql --limit 5
-uv run research-data query --sql examples/rolling_volatility.sql --limit 5
-```
-
-Expected: DuckDB SQL results returned as Polars; groups include source; trailing volatility is available in 2025 because it was computed before filtering. Explain price returns versus total returns and full-window minimums.
-
-**2:15–3:00 — Demonstrate safe reruns.**
-
-```bash
-uv run research-data ingest --config configs/prices.yaml
-uv run research-data validate --dataset prices
-uv run python - <<'PY'
-from research_data_engine import QueryEngine
-with QueryEngine() as q:
-    print(q.query("SELECT count(*) AS active_rows FROM prices"))
-PY
-```
-
-Expected: active row count remains **65,194**, with a new snapshot rather than appended observations. Stored-snapshot validation has no hard errors. Explain the failure-injection test proving an unsuccessful manifest publication preserves the previous snapshot.
-
-**3:00–4:15 — Benchmark evidence and boundaries.**
-
-```bash
-uv run research-data benchmark --rows 100000 --repetitions 3
-```
-
-Expected: correctness gates first, then actual timings and memory reports for all five workloads. Numbers will vary. If time is tight, show `benchmarks/results/measured-1000000.md` from the delivered run instead. State that the 1M recorded results favor Polars/DuckDB in these particular workloads, that pandas was given vectorized dates/pushdown, and that sampled RSS is not precise allocation accounting. No 5M claim.
-
-**4:15–5:00 — Public API and optimized plan.**
-
-```bash
-uv run python examples/research_example.py
-```
-
-Expected: two-symbol synthetic price-return slice, an optimized Polars Parquet plan, and a DuckDB grouped summary. Close with one concrete next step: exchange-calendar and adjusted-price contracts before expanding research usage.
-
-## F. Honest limitations and preparation
-
-Implemented: CLI/API, deterministic generation, normalization, validation/rejection/quarantine, trailing analytics, snapshots/reports, DuckDB SQL, tests, scoped measured benchmarks, and an interactive static walkthrough. A GitHub Actions workflow is configured for pushes and pull requests; inspect the repository's Actions page for actual hosted run results.
-
-Not implemented: live feeds, real exchange calendars, corporate actions/total returns, stable security IDs, point-in-time fundamentals, revision-aware backtesting, concurrent-writer coordination, automatic snapshot retention, cloud storage, production orchestration, or a hostile-SQL resource sandbox. Validation materializes data in memory. Atomic visibility is not a power-loss durability guarantee. The optional 5M benchmark is unexecuted.
-
-Recommended rehearsal: run the exact commands in order; inspect one rejection/quarantine test and the independent volatility reference; explain why date filtering must preserve lag context; read the 1M report's CPU/RSS columns as well as speedups. If a feature is only in the roadmap, say so.
-
-## G. Manager-facing visual walkthrough
-
-From the repository root:
+Build and serve the frontend from the repository root:
 
 ```bash
 node frontend/build.mjs
 python3 -m http.server 4173 --bind 127.0.0.1 --directory frontend/dist
 ```
 
-Open **http://127.0.0.1:4173**. The page follows input, normalization, validation, financial analytics, snapshot publication, SQL access, measured performance, and verification. Use the step navigation to keep the presentation focused.
+1. Open `http://127.0.0.1:4173/`. The **How it works** page explains the five steps on one page. Show the seven set-aside records in the row accounting and try the two-price return example.
+2. Open **Research workspace**. The task is: “I need a clean stock-price history for a research notebook.” Select a stock and dates, apply the selection, and review the summary and chart.
+3. Switch to recent volatility. Explain that the first displayed date can have a value because Python calculated it with earlier history before the date filter.
+4. Download the selected CSV. It includes every retained row in the selection, not only the table's current page.
+5. Select `SYN0000`, January–February 2021, to review warning flags. Inspect both duplicate records in the quarantine table (source rows 12 and 65,202).
 
-Inspect both duplicate records, compare quarantine/rejection behavior, edit the two-price return illustration, explore actual retained price/volatility histories, and switch the benchmark between wall time and process RSS. Each step links to implementation code. The SQL panels show recorded outputs from the actual engine; the browser does not execute new Python processing or SQL. The print button produces a shareable PDF through the browser.
+Be precise about execution: Python prepared these outputs offline. The website filters and exports them locally in the browser. It does not run a new ingestion job, accept uploads, or connect to live markets. All 50 synthetic stocks have downloadable histories.
 
-The included evidence is synthetic and exported from a real local pipeline run. A registered Sites project is owner-private; deployment and viewer access require their applicable approval/access settings. The local presentation is independent of hosting. See [frontend instructions](../frontend/README.md) to refresh evidence and run the frontend checks.
+The workspace's **price change** compares its first and last selected closes; it differs from a row's return against the previous retained observation. Its **average daily volume** averages the selected observations; it differs from the library's trailing 20-observation average. Its **recent volatility** is the stored 20-return value on the latest selected row.
+
+## Questions worth being ready for
+
+**Why is this valuable?** It makes routine preparation consistent and inspectable. Another notebook can start from a clean file instead of rewriting the same checks.
+
+**Why Polars?** Its column operations suit parsing, checking, sorting, and calculations. This project uses an in-memory validation boundary; lazy scanning does not make every operation memory-free.
+
+**Why DuckDB too?** Some researchers prefer SQL. DuckDB reads local Parquet directly without running a database server. Polars handles preparation; DuckDB is an optional way to use the result.
+
+**Why keep unusual moves?** A large move may reflect a real event, a split, or an error. A simple rule cannot distinguish those causes. Keep it flagged for review.
+
+**Why not choose one duplicate?** There is no implemented source-quality rule for deciding which copy is right. Setting aside both makes the ambiguity visible.
+
+**How did you check the maths?** Tests compare returns and rolling volatility against independent NumPy references, check short histories and source boundaries, and verify that adding future rows does not change earlier results.
+
+**What is the main limitation?** These are synthetic, unadjusted prices. Real research would first need suitable licensed inputs, stable identifiers, corporate-action handling, and exchange calendars. The current gap check only knows weekdays.
+
+**What about the speed claims?** A separate exercise measured matched 100k and 1M synthetic workloads after checking complete result agreement. Results vary by workload and machine; faster wall time did not always mean lower memory. Show `benchmarks/results/` if asked. The 5M case was not executed. These measurements do not establish end-to-end production throughput.
+
+**What would you do next?** Take a representative real file and review its data contract, adjustments, and calendar before adding more indicators or infrastructure.
+
+## Optional terminal demonstration
+
+```bash
+uv run pytest
+uv run research-data demo --directory /tmp/research-data-demo
+uv run research-data query --dataset /tmp/research-data-demo/processed/equity_prices --sql examples/security_summary.sql --limit 5
+```
+
+Expected: the recorded row accounting, saved report/quarantine locations, and a query result from the saved synthetic dataset. Tests, examples, and benchmark methodology are in the repository for deeper discussion.

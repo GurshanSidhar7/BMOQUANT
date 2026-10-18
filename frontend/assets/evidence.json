@@ -1,5 +1,5 @@
 {
-  "backend_commit": "408b9e4c0e97738ce826ac7268bffcf941e4ce34",
+  "backend_commit": "f24ab8238278db60494aded5f4852030b91a6674",
   "benchmarks": {
     "100000": {
       "correctness": "all five full-result comparisons passed; rtol=1e-8, atol=1e-10",
@@ -798,7 +798,7 @@
   },
   "config_yaml": "dataset: equity_prices\ninput:\n  path: ../data/raw\n  format: csv\n  source: synthetic_weekdays\n  date_format: \"%Y-%m-%d\"\nschema:\n  symbol: ticker\n  date: trade_date\n  open: open\n  high: high\n  low: low\n  close: close\n  volume: volume\n  source: source\nvalidation:\n  duplicate_policy: quarantine\n  invalid_price_policy: quarantine\n  missing_value_policy: quarantine\n  malformed_value_policy: quarantine\n  extreme_return_threshold: 0.25\n  volume_change_ratio: 10.0\n  stale_price_window: 5\n  calendar: weekdays\noutput:\n  path: ../data/processed/equity_prices\n  format: parquet\n",
   "data_kind": "SYNTHETIC unadjusted OHLCV",
-  "generated_at": "2026-10-18T21:16:52.938074+00:00",
+  "generated_at": "2026-10-18T21:34:57.888638+00:00",
   "mode": "Recorded Python outputs; this page does not execute the Python pipeline",
   "policy_preview": {
     "reject": {
@@ -2417,7 +2417,7 @@
       "negative_volume": 1,
       "nonfinite_price": 1
     },
-    "execution_timestamp": "2026-10-18T21:16:51.371572+00:00",
+    "execution_timestamp": "2026-10-18T21:34:56.268175+00:00",
     "input_file_count": 1,
     "input_files": [
       {
@@ -2445,7 +2445,7 @@
       "pydantic": "2.14.1",
       "research-data-engine": "0.1.0"
     },
-    "processing_duration_seconds": 0.5099578329973156,
+    "processing_duration_seconds": 0.25351041700923815,
     "python": "3.12.15",
     "quarantined_row_count": 7,
     "rejected_categories": [],
@@ -53261,7 +53261,7 @@
   "snapshot": {
     "current_manifest": {
       "format": "research-data-engine-v1",
-      "version": "da2b0d233ae74c8fbb95c25c15d6c004"
+      "version": "f297ef144065471a8fca1ca0b8e7d507"
     },
     "files": [
       "prices.parquet",
@@ -53269,9 +53269,9 @@
       "report.json",
       "metadata.json"
     ],
-    "prices_bytes": 4953621,
+    "prices_bytes": 4953619,
     "rows": 65194,
-    "version": "da2b0d233ae74c8fbb95c25c15d6c004"
+    "version": "f297ef144065471a8fca1ca0b8e7d507"
   },
   "source": {
     "analytics": {
@@ -53317,7 +53317,7 @@
       "url": "https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/storage.py#L75"
     },
     "validation": {
-      "code": "def validate_prices(\n    frame: pl.DataFrame, config: ValidationConfig | None = None\n) -> ValidationResult:\n    \"\"\"Quarantine every member of a duplicate group; never silently choose a winner.\n\n    Validation materializes one normalized dataset. Global duplicate detection, sorted\n    analytics, and record-level reports are deliberate MVP memory boundaries.\n    \"\"\"\n    config = config or ValidationConfig()\n    wrong = {\n        c: str(frame.schema.get(c))\n        for c, dtype in PRICE_SCHEMA.items()\n        if frame.schema.get(c) != dtype\n    }\n    if wrong:\n        raise DataValidationError(f\"Canonical columns are missing or have incorrect types: {wrong}\")\n    missing_values = {c: frame[c].null_count() for c in CANONICAL_COLUMNS}\n    if \"_source_file\" not in frame.columns:\n        frame = frame.with_columns(pl.lit(\"<memory>\").alias(\"_source_file\"))\n    if \"_source_row\" not in frame.columns:\n        frame = frame.with_row_index(\"_source_row\", offset=1).with_columns(\n            pl.col(\"_source_row\").cast(pl.Int64)\n        )\n    if \"_parse_errors\" not in frame.columns:\n        frame = frame.with_columns(pl.lit([], dtype=pl.List(pl.String)).alias(\"_parse_errors\"))\n    if \"_raw_record\" not in frame.columns:\n        frame = frame.with_columns(\n            pl.struct(CANONICAL_COLUMNS).struct.json_encode().alias(\"_raw_record\")\n        )\n    nonfinite_returns = [\n        pl.col(c).is_not_null() & ~pl.col(c).is_finite()\n        for c in (\"simple_return\", \"log_return\")\n        if c in frame.columns\n    ]\n    conditions = {\n        \"missing_value\": pl.any_horizontal(\n            pl.col(c).is_null() & ~pl.col(\"_parse_errors\").list.contains(c)\n            for c in CANONICAL_COLUMNS\n        )\n        | (pl.col(\"symbol\").str.strip_chars() == \"\")\n        | (pl.col(\"source\").str.strip_chars() == \"\"),\n        \"malformed_value\": pl.col(\"_parse_errors\").list.len() > 0,\n        \"duplicate_key\": (pl.len().over(KEY) > 1)\n        & pl.all_horizontal(pl.col(c).is_not_null() for c in KEY),\n        \"invalid_price\": pl.any_horizontal(pl.col(c) <= 0 for c in PRICES),\n        \"nonfinite_price\": pl.any_horizontal(~pl.col(c).is_finite() for c in PRICES),\n        \"negative_volume\": pl.col(\"volume\") < 0,\n        \"invalid_ohlc\": (pl.col(\"high\") < pl.max_horizontal(\"open\", \"close\", \"low\"))\n        | (pl.col(\"low\") > pl.min_horizontal(\"open\", \"close\", \"high\")),\n        \"nonfinite_return\": pl.any_horizontal(nonfinite_returns)\n        if nonfinite_returns\n        else pl.lit(False),\n    }\n    # Recompute derived columns rather than trusting a stale caller-provided calculation.\n    frame = frame.with_columns(_codes(conditions).alias(\"_errors\")).drop(\n        *[c for c in [*ANALYTIC_COLUMNS, \"_warnings\", \"_missing_sessions\"] if c in frame.columns]\n    )\n    bad = frame.filter(pl.col(\"_errors\").list.len() > 0)\n    clean = frame.filter(pl.col(\"_errors\").list.len() == 0)\n    # Finite positive prices can still overflow a ratio or dollar-volume product.\n    # Recompute after quarantine so all retained returns use the prior retained observation.\n    while True:\n        computed = calculate_analytics(clean.lazy()).collect()\n        overflow = computed.with_columns(\n            _codes(\n                {\n                    \"nonfinite_return\": pl.any_horizontal(\n                        pl.col(c).is_not_null() & ~pl.col(c).is_finite()\n                        for c in (\"simple_return\", \"log_return\")\n                    ),\n                    \"nonfinite_analytics\": pl.any_horizontal(\n                        pl.col(c).is_not_null() & ~pl.col(c).is_finite()\n                        for c in ANALYTIC_COLUMNS\n                        if c not in (\"simple_return\", \"log_return\")\n                    ),\n                }\n            ).alias(\"_computed_errors\")\n        )\n        invalid = overflow.filter(pl.col(\"_computed_errors\").list.len() > 0)\n        if invalid.is_empty():\n            clean = computed\n            break\n        new_bad = invalid.select(frame.columns).with_columns(\n            invalid[\"_computed_errors\"].alias(\"_errors\")\n        )\n        bad = pl.concat([bad, new_bad], how=\"vertical\")\n        clean = overflow.filter(pl.col(\"_computed_errors\").list.len() == 0).select(frame.columns)\n    errors = _counts(bad, \"_errors\")\n    rejected = [category for category in errors if config.policy_for(category) == \"reject\"]\n    if frame.is_empty() or clean.is_empty():\n        errors[\"empty_dataset\"] = 1\n        rejected.append(\"empty_dataset\")\n    clean = _add_warnings(clean, config)\n    warnings = _counts(clean, \"_warnings\")\n    clean = clean.drop(\"_errors\", \"_parse_errors\", \"_raw_record\")\n    return ValidationResult(\n        clean=clean,\n        quarantine=bad.sort([\"_source_file\", \"_source_row\"]),\n        errors=errors,\n        warnings=warnings,\n        missing_values=missing_values,\n        rejected_categories=sorted(rejected),\n        input_rows=frame.height,\n    )",
+      "code": "def validate_prices(\n    frame: pl.DataFrame, config: ValidationConfig | None = None\n) -> ValidationResult:\n    \"\"\"Quarantine every member of a duplicate group; never silently choose a winner.\n\n    Validation materializes one normalized dataset. Global duplicate detection, sorted\n    analytics, and record-level reports are deliberate MVP memory boundaries.\n    \"\"\"\n    config = config or ValidationConfig()\n    wrong = {\n        c: str(frame.schema.get(c))\n        for c, dtype in PRICE_SCHEMA.items()\n        if frame.schema.get(c) != dtype\n    }\n    if wrong:\n        raise DataValidationError(f\"Canonical columns are missing or have incorrect types: {wrong}\")\n    missing_values = {c: frame[c].null_count() for c in CANONICAL_COLUMNS}\n    if \"_source_file\" not in frame.columns:\n        frame = frame.with_columns(pl.lit(\"<memory>\").alias(\"_source_file\"))\n    if \"_source_row\" not in frame.columns:\n        frame = frame.with_row_index(\"_source_row\", offset=1).with_columns(\n            pl.col(\"_source_row\").cast(pl.Int64)\n        )\n    if \"_parse_errors\" not in frame.columns:\n        frame = frame.with_columns(pl.lit([], dtype=pl.List(pl.String)).alias(\"_parse_errors\"))\n    if \"_raw_record\" not in frame.columns:\n        frame = frame.with_columns(\n            pl.struct(CANONICAL_COLUMNS).struct.json_encode().alias(\"_raw_record\")\n        )\n    nonfinite_returns = [\n        pl.col(c).is_not_null() & ~pl.col(c).is_finite()\n        for c in (\"simple_return\", \"log_return\")\n        if c in frame.columns\n    ]\n    conditions = {\n        \"missing_value\": pl.any_horizontal(\n            pl.col(c).is_null() & ~pl.col(\"_parse_errors\").list.contains(c)\n            for c in CANONICAL_COLUMNS\n        )\n        | (pl.col(\"symbol\").str.strip_chars() == \"\")\n        | (pl.col(\"source\").str.strip_chars() == \"\"),\n        \"malformed_value\": pl.col(\"_parse_errors\").list.len() > 0,\n        \"duplicate_key\": (pl.len().over(KEY) > 1)\n        & pl.all_horizontal(pl.col(c).is_not_null() for c in KEY),\n        \"invalid_price\": pl.any_horizontal(pl.col(c) <= 0 for c in PRICES),\n        \"nonfinite_price\": pl.any_horizontal(~pl.col(c).is_finite() for c in PRICES),\n        \"negative_volume\": pl.col(\"volume\") < 0,\n        \"invalid_ohlc\": (pl.col(\"high\") < pl.max_horizontal(\"open\", \"close\", \"low\"))\n        | (pl.col(\"low\") > pl.min_horizontal(\"open\", \"close\", \"high\")),\n        \"nonfinite_return\": pl.any_horizontal(nonfinite_returns)\n        if nonfinite_returns\n        else pl.lit(False),\n    }\n    # Recompute derived columns rather than trusting a stale caller-provided calculation.\n    frame = frame.with_columns(_codes(conditions).alias(\"_errors\")).drop(\n        *[c for c in [*ANALYTIC_COLUMNS, \"_warnings\", \"_missing_sessions\"] if c in frame.columns]\n    )\n    bad = frame.filter(pl.col(\"_errors\").list.len() > 0)\n    clean = frame.filter(pl.col(\"_errors\").list.len() == 0)\n    # Calculate once after removing invalid inputs. Arithmetic overflow needs input\n    # review, rather than repeated row removal that changes the price history.\n    clean = calculate_analytics(clean.lazy()).collect()\n    overflow = clean.filter(\n        pl.any_horizontal(\n            pl.col(c).is_not_null() & ~pl.col(c).is_finite() for c in ANALYTIC_COLUMNS\n        )\n    )\n    if not overflow.is_empty():\n        example = overflow.select(\"symbol\", \"date\", \"source\", \"_source_row\").head(3).to_dicts()\n        raise DataValidationError(\n            f\"Derived calculations exceed the supported numeric range in {overflow.height} \"\n            f\"rows. Review input units and prices. Examples: {example}. \"\n            \"No new snapshot was published.\"\n        )\n    errors = _counts(bad, \"_errors\")\n    rejected = [category for category in errors if config.policy_for(category) == \"reject\"]\n    if frame.is_empty() or clean.is_empty():\n        errors[\"empty_dataset\"] = 1\n        rejected.append(\"empty_dataset\")\n    clean = _add_warnings(clean, config)\n    warnings = _counts(clean, \"_warnings\")\n    clean = clean.drop(\"_errors\", \"_parse_errors\", \"_raw_record\")\n    return ValidationResult(\n        clean=clean,\n        quarantine=bad.sort([\"_source_file\", \"_source_row\"]),\n        errors=errors,\n        warnings=warnings,\n        missing_values=missing_values,\n        rejected_categories=sorted(rejected),\n        input_rows=frame.height,\n    )",
       "file": "src/research_data_engine/validation.py",
       "line": 81,
       "url": "https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/validation.py#L81"
@@ -53351,12 +53351,416 @@
   ],
   "verification": {
     "failures": 0,
-    "passed": 74,
-    "recorded_at": "2026-10-18T21:16:51.003896+00:00",
+    "passed": 77,
+    "recorded_at": "2026-10-18T21:34:55.980601+00:00",
     "scope": "Python project tests; browser checks are reported separately",
-    "seconds": 8.273,
+    "seconds": 9.443,
     "skipped": 0,
     "status": "passed",
-    "tests": 74
+    "tests": 77
+  },
+  "workspace": {
+    "securities": [
+      {
+        "end": "2025-12-31",
+        "path": "history/000.json",
+        "rows": 1298,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-08",
+        "symbol": "SYN0000"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/001.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0001"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/002.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0002"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/003.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0003"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/004.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0004"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/005.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0005"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/006.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0006"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/007.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0007"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/008.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0008"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/009.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0009"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/010.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0010"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/011.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0011"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/012.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0012"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/013.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0013"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/014.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0014"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/015.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0015"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/016.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0016"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/017.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0017"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/018.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0018"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/019.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0019"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/020.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0020"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/021.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0021"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/022.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0022"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/023.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0023"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/024.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0024"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/025.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0025"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/026.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0026"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/027.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0027"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/028.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0028"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/029.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0029"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/030.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0030"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/031.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0031"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/032.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0032"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/033.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0033"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/034.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0034"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/035.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0035"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/036.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0036"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/037.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0037"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/038.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0038"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/039.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0039"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/040.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0040"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/041.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0041"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/042.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0042"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/043.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0043"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/044.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0044"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/045.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0045"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/046.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0046"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/047.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0047"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/048.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0048"
+      },
+      {
+        "end": "2025-12-31",
+        "path": "history/049.json",
+        "rows": 1304,
+        "source": "synthetic_weekdays",
+        "start": "2021-01-01",
+        "symbol": "SYN0049"
+      }
+    ]
   }
 }

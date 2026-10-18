@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f6f8" />
+    <meta
+      name="description"
+      content="Review a cleaned stock-price history, inspect recorded data quality, and export a research slice from the synthetic demonstration dataset."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2317243c'/%3E%3Cpath d='M8 24V12h5v12m6 0V7h5v17' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
+    />
+    <title>Research workspace · Research Data Engine</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script type="module" src="workspace.mjs"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to workspace</a>
+    <header class="site-header">
+      <a class="brand" href="index.html"
+        ><span class="brand-mark" aria-hidden="true">▥</span
+        ><span
+          >Research Data Engine<small
+            >Gurshan Sidhar / Portfolio project</small
+          ></span
+        ></a
+      >
+      <nav class="page-tabs" aria-label="Pages">
+        <a href="index.html">How it works</a
+        ><a href="workspace.html" aria-current="page">Research workspace</a>
+      </nav>
+      <a
+        class="repo-link"
+        href="https://github.com/GurshanSidhar7/BMOQUANT"
+        target="_blank"
+        rel="noopener"
+        >View code ↗</a
+      >
+    </header>
+    <main id="main" class="workspace-main">
+      <section class="workspace-heading">
+        <div class="topline">
+          <span class="eyebrow"
+            >A PRACTICAL USE CASE / PREPARE A RESEARCH SLICE</span
+          ><span class="pill">Synthetic example data</span>
+        </div>
+        <h1>Inspect a stock.<br /><em>Start your analysis.</em></h1>
+        <p class="hero-intro">
+          You’re preparing a price-history file for a research notebook. Pick a
+          stock and dates, check its history and data-quality flags, then
+          download the retained observations.
+        </p>
+        <p class="data-status" id="workspace-status" role="status">
+          Loading the saved dataset…
+        </p>
+      </section>
+      <section
+        class="surface workspace-controls"
+        aria-labelledby="selection-title"
+      >
+        <div class="surface-header">
+          <h2 id="selection-title">1. Choose your data</h2>
+          <button
+            class="text-button"
+            id="reset-selection"
+            type="button"
+            disabled
+          >
+            Reset example
+          </button>
+        </div>
+        <form id="research-form">
+          <label
+            >Stock<select
+              id="security-select"
+              disabled
+              aria-describedby="selection-help"
+            >
+              <option>Loading…</option>
+            </select></label
+          ><label
+            >Start date<input
+              type="date"
+              id="start-date"
+              value="2025-01-01"
+              required
+              disabled /></label
+          ><label
+            >End date<input
+              type="date"
+              id="end-date"
+              value="2025-12-31"
+              required
+              disabled /></label
+          ><button
+            class="button primary"
+            type="submit"
+            id="apply-selection"
+            disabled
+          >
+            Apply selection
+          </button>
+        </form>
+        <p class="caption" id="selection-help">
+          50 generated stocks · 2021–2025 · one synthetic source · dates include
+          both endpoints
+        </p>
+        <p id="selection-error" class="error-message" role="alert" hidden></p>
+      </section>
+      <section
+        id="research-results"
+        aria-labelledby="results-title"
+        aria-busy="true"
+      >
+        <div class="workspace-section-header">
+          <div>
+            <span class="eyebrow">2. REVIEW THE RESULT</span>
+            <h2 id="results-title">Price-history review</h2>
+            <p id="result-context" class="muted">
+              Choose a stock to inspect its saved observations.
+            </p>
+          </div>
+          <button
+            class="button secondary"
+            id="download-csv"
+            type="button"
+            disabled
+          >
+            Download selected CSV ↓
+          </button>
+        </div>
+        <p class="selection-note" id="selection-note" role="status" hidden>
+          The controls have changed. Apply the selection to update the result
+          and download.
+        </p>
+        <div id="summary-cards" class="summary-cards"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <h3>No retained observations in this date range.</h3>
+          <p>
+            Try dates within 2021–2025, or choose another stock. No values have
+            been filled in.
+          </p>
+        </div>
+        <div class="surface chart-surface" id="chart-surface">
+          <div class="surface-header">
+            <div>
+              <h3 id="chart-title">Closing price</h3>
+              <p class="caption" id="chart-description">
+                Stored values from the Python pipeline
+              </p>
+            </div>
+            <label class="metric-label"
+              >Show<select id="metric-select">
+                <option value="close">Closing price</option>
+                <option value="simple_return">Price return</option>
+                <option value="realized_vol_20">
+                  Recent volatility (20 returns)
+                </option>
+              </select></label
+            >
+          </div>
+          <div id="chart-container" class="chart-container"></div>
+          <div class="chart-footer">
+            <p class="caption" id="chart-readout" aria-live="polite">
+              Focus the chart and use ← or → to inspect an observation.
+            </p>
+            <span class="chart-key"><i></i> Retained data</span>
+          </div>
+        </div>
+        <div class="workspace-notes">
+          <p>
+            <strong>What does the summary mean?</strong> Price change compares
+            the first and last retained closes inside your selection. Average
+            volume is the mean shares traded per observed row in that selection.
+            Recent volatility uses the latest row’s stored 20-return measure.
+          </p>
+          <p>
+            <strong>Earlier history is preserved.</strong> Returns and rolling
+            measures were calculated in Python before these date filters. They
+            can use observations before your selected start. Blank volatility
+            means there was not enough history. These are unadjusted price
+            measures.
+          </p>
+        </div>
+        <div class="surface" id="observations-surface">
+          <div class="surface-header">
+            <h3>Retained observations</h3>
+            <span id="table-count" class="muted"></span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <caption class="sr-only">
+                Selected retained price observations and research measures
+              </caption>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Close</th>
+                  <th>Price return</th>
+                  <th>20-return volatility</th>
+                  <th>Volume</th>
+                  <th>Review flags</th>
+                  <th>Source row</th>
+                </tr>
+              </thead>
+              <tbody id="observations-body"></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <button
+              class="button small secondary"
+              id="previous-page"
+              type="button"
+            >
+              ← Previous</button
+            ><span id="page-status"></span
+            ><button
+              class="button small secondary"
+              id="next-page"
+              type="button"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </section>
+      <section class="quality-section" aria-labelledby="quality-title">
+        <div class="workspace-section-header">
+          <div>
+            <span class="eyebrow">3. CHECK WHAT WAS SET ASIDE</span>
+            <h2 id="quality-title">Review the file before using it.</h2>
+            <p class="muted">
+              These checks cover the whole delivered file. The summary above
+              covers your selection.
+            </p>
+          </div>
+          <a class="text-link" href="assets/pipeline-report.json" download
+            >Download run report ↓</a
+          >
+        </div>
+        <div id="quality-summary" class="quality-summary"></div>
+        <div class="surface">
+          <div class="surface-header">
+            <h3>Records excluded from the research dataset</h3>
+            <span class="muted"
+              >All 7 quarantined records · entire input file</span
+            >
+          </div>
+          <div class="table-scroll">
+            <table>
+              <caption class="sr-only">
+                Quarantined source records and their reasons
+              </caption>
+              <thead>
+                <tr>
+                  <th>Source row</th>
+                  <th>Stock</th>
+                  <th>Raw date</th>
+                  <th>Raw close</th>
+                  <th>Reason</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody id="quarantine-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="caption">
+          Error-category counts may overlap. Warnings stay on retained records;
+          a large move is not automatically discarded. Dates with no retained
+          record are not filled in.
+        </p>
+      </section>
+      <div class="next-step workspace-next">
+        <div>
+          <span class="eyebrow">WHAT HAPPENS NEXT?</span>
+          <h3>Use the CSV in your own analysis.</h3>
+          <p>
+            The download includes all selected rows with OHLC prices, volume,
+            return, volatility, source-row references, and warning codes.
+            Investigate flagged observations before drawing conclusions.
+          </p>
+        </div>
+        <a class="button secondary" href="index.html"
+          >Understand how it was prepared ↗</a
+        >
+      </div>
+      <footer>
+        <p>Built by Gurshan Sidhar · Independent portfolio project.</p>
+        <p>
+          Python prepared this dataset offline. This browser filters and exports
+          its saved outputs; it does not ingest new files or run live market
+          queries. All data is synthetic and unadjusted.
+        </p>
+        <a href="index.html">Read the walkthrough ↗</a>
+      </footer>
+    </main>
+    <dialog id="record-dialog" aria-labelledby="record-title">
+      <div class="dialog-heading">
+        <div>
+          <span class="eyebrow">SOURCE RECORD</span>
+          <h2 id="record-title">Record details</h2>
+        </div>
+        <button
+          class="dialog-close"
+          id="close-record"
+          aria-label="Close record details"
+          type="button"
+        >
+          ×
+        </button>
+      </div>
+      <div id="record-content"></div>
+    </dialog>
+    <noscript
+      ><p class="noscript-note">
+        JavaScript is required to filter and download this example. Read the
+        <a href="index.html">walkthrough</a> or download the
+        <a href="assets/pipeline-report.json">run report</a>.
+      </p></noscript
+    >
+  </body>
+</html>

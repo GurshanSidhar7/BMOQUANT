@@ -44,7 +44,7 @@
     "negative_volume": 1,
     "nonfinite_price": 1
   },
-  "execution_timestamp": "2026-10-18T21:16:51.371572+00:00",
+  "execution_timestamp": "2026-10-18T21:34:56.268175+00:00",
   "input_file_count": 1,
   "input_files": [
     {
@@ -72,7 +72,7 @@
     "pydantic": "2.14.1",
     "research-data-engine": "0.1.0"
   },
-  "processing_duration_seconds": 0.5099578329973156,
+  "processing_duration_seconds": 0.25351041700923815,
   "python": "3.12.15",
   "quarantined_row_count": 7,
   "rejected_categories": [],

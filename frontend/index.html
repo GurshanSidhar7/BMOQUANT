@@ -6,1078 +6,538 @@
     <meta name="theme-color" content="#f5f6f8" />
     <meta
       name="description"
-      content="Follow a financial research dataset from raw CSV to validated analytics. A transparent walkthrough backed by actual Python outputs and measured benchmarks."
+      content="A plain-language guide to a small research data project: read a price file, check it, calculate useful measures, and save a reusable dataset."
     />
-    <title>Research Data Engine · From input to insight</title>
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%2317243c'/%3E%3Cpath d='M10 28V12h7v16m6 0V18h7v10' fill='none' stroke='%23fff' stroke-width='3'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2317243c'/%3E%3Cpath d='M8 24V12h5v12m6 0V7h5v17' fill='none' stroke='white' stroke-width='2'/%3E%3C/svg%3E"
     />
+    <title>How it works · Research Data Engine</title>
     <link rel="stylesheet" href="styles.css" />
     <script type="module" src="app.mjs"></script>
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to walkthrough</a>
+    <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header">
-      <a class="brand" href="#overview" aria-label="Research Data Engine, overview">
-        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
-        <span
-          >Research Data Engine<span class="brand-subtitle"
-            >A quantitative research project</span
+      <a class="brand" href="index.html"
+        ><span class="brand-mark" aria-hidden="true">▥</span
+        ><span
+          >Research Data Engine<small
+            >Gurshan Sidhar / Portfolio project</small
           ></span
-        >
-      </a>
-      <div class="header-context"><span class="status-dot"></span> An open look at the logic</div>
-      <nav class="header-actions" aria-label="Project links">
-        <button class="text-button print-button" id="print-page" type="button">
-          Print walkthrough <span aria-hidden="true">↗</span>
-        </button>
-        <a
-          class="source-button"
-          href="https://github.com/GurshanSidhar7/BMOQUANT"
-          target="_blank"
-          rel="noopener noreferrer"
-          >View repository <span aria-hidden="true">↗</span></a
+        ></a
+      >
+      <nav class="page-tabs" aria-label="Pages">
+        <a href="index.html" aria-current="page">How it works</a
+        ><a href="workspace.html"
+          >Research workspace <span aria-hidden="true">↗</span></a
         >
       </nav>
-      <div class="reading-progress" aria-hidden="true"><span id="reading-progress"></span></div>
+      <a
+        class="repo-link"
+        href="https://github.com/GurshanSidhar7/BMOQUANT"
+        target="_blank"
+        rel="noopener"
+        >View code ↗</a
+      >
     </header>
-
     <div class="page-shell">
-      <aside class="sidebar" aria-label="Walkthrough navigation">
-        <div class="sidebar-label">THE PIPELINE</div>
-        <nav id="step-nav">
-          <a href="#inputs" data-stage="inputs"
-            ><span>01</span>
-            <div>The raw input<small>Know where it starts</small></div></a
-          >
-          <a href="#normalize" data-stage="normalize"
-            ><span>02</span>
-            <div>One clear contract<small>Make the data consistent</small></div></a
-          >
-          <a href="#validate" data-stage="validate"
-            ><span>03</span>
-            <div>Every row accounted for<small>Validate, flag, quarantine</small></div></a
-          >
-          <a href="#analytics" data-stage="analytics"
-            ><span>04</span>
-            <div>From prices to measures<small>Explain the mathematics</small></div></a
-          >
-          <a href="#storage" data-stage="storage"
-            ><span>05</span>
-            <div>A safe handoff<small>Publish a complete snapshot</small></div></a
-          >
-          <a href="#query" data-stage="query"
-            ><span>06</span>
-            <div>Ready for research<small>Ask questions with SQL</small></div></a
-          >
-          <a href="#performance" data-stage="performance"
-            ><span>07</span>
-            <div>Measure the trade-offs<small>Correctness before speed</small></div></a
-          >
-          <a href="#evidence" data-stage="evidence"
-            ><span>08</span>
-            <div>The evidence & limits<small>Know what is verified</small></div></a
-          >
+      <aside class="sidebar">
+        <p class="eyebrow">THE WALKTHROUGH</p>
+        <nav aria-label="Logic steps" id="step-nav">
+          <a href="#read"><span>01</span> Read the file</a
+          ><a href="#standardize"><span>02</span> Make it consistent</a
+          ><a href="#check"><span>03</span> Check the records</a
+          ><a href="#calculate"><span>04</span> Add useful measures</a
+          ><a href="#save"><span>05</span> Save & use it</a>
         </nav>
-        <div class="sidebar-note">
-          <span class="tiny-label">THE DESIGN PRINCIPLE</span>
-          <p>Reliability first.<br />Reproducibility second.<br />Performance third.</p>
-          <span class="sidebar-rule"></span>
-          <p class="small-note">One page. Eight steps.<br />Every decision inspectable.</p>
-        </div>
+        <p class="sidebar-note">
+          One practical task:<br />less repeated data cleaning<br />before
+          research begins.
+        </p>
       </aside>
-
       <main id="main">
-        <section class="hero" id="overview" aria-labelledby="hero-heading">
-          <div class="hero-topline">
-            <span class="eyebrow">RESEARCH INFRASTRUCTURE / EXPLAINED</span
-            ><span class="pill synthetic-pill"><span></span> Synthetic data</span>
+        <section class="hero" id="overview">
+          <div class="topline">
+            <span class="eyebrow">A SMALL RESEARCH UTILITY, EXPLAINED</span
+            ><span class="pill">Synthetic example data</span>
           </div>
-          <div class="hero-grid">
-            <div class="hero-copy">
-              <h1 id="hero-heading">
-                From raw data.<br />To research you<br />can <em>trace.</em>
-              </h1>
+          <h1>Good research starts<br />with a <em>usable file.</em></h1>
+          <p class="hero-intro">
+            Before studying stock prices, a researcher has to check the data.
+            This project turns a messy price file into a consistent dataset,
+            with a clear record of what was kept and what needs review.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#read">Follow the five steps ↓</a
+            ><a class="button secondary" href="workspace.html"
+              >Try the research workspace ↗</a
+            >
+          </div>
+          <div class="pipeline-strip" aria-label="Pipeline overview">
+            <span>CSV file</span><i>→</i><span>Consistent fields</span><i>→</i
+            ><span>Data checks</span><i>→</i><span>Basic measures</span><i>→</i
+            ><span>Reusable data</span>
+          </div>
+          <div class="purpose-grid">
+            <div>
+              <span class="eyebrow">THE PROBLEM</span>
               <p>
-                A step-by-step look at how messy stock-price files become consistent, validated
-                data. Follow the decisions, inspect the records, and see the evidence.
+                Every new analysis can repeat the same date fixes, duplicate
+                checks, and return calculations.
               </p>
-              <div class="hero-actions">
-                <a class="primary-button" href="#inputs"
-                  >Follow the pipeline <span aria-hidden="true">↓</span></a
-                ><a class="inline-link" href="#validate"
-                  >Inspect a record <span aria-hidden="true">↗</span></a
-                >
-              </div>
-              <div class="author-line">
-                Built by <strong>Gurshan Sidhar</strong><span>Independent portfolio project</span>
-              </div>
             </div>
-            <div
-              class="hero-visual"
-              aria-label="Recorded pipeline: 65,201 input rows become 65,194 valid observations and 7 quarantined records"
-            >
-              <div class="visual-topline">
-                <span class="tiny-label">ONE DATASET. A COMPLETE TRAIL.</span
-                ><span class="mono">RUN / 001</span>
-              </div>
-              <div class="visual-input">
-                <span class="file-icon" aria-hidden="true">CSV</span>
-                <div>
-                  <span class="tiny-label">RAW OBSERVATIONS</span
-                  ><strong data-stat="input">65,201</strong
-                  ><span>50 synthetic equities · 2021–2025</span>
-                </div>
-                <span class="input-nodes" aria-hidden="true">···<br />···<br />···</span>
-              </div>
-              <div class="flow-connector">
-                <span></span>
-                <div>Map <i>→</i> Check <i>→</i> Calculate</div>
-                <span></span>
-              </div>
-              <div class="visual-output">
-                <div>
-                  <span class="check-icon" aria-hidden="true">✓</span
-                  ><span class="tiny-label">VALID & RETAINED</span
-                  ><strong data-stat="valid">65,194</strong
-                  ><span>Typed prices + financial analytics</span>
-                </div>
-                <div>
-                  <span class="quarantine-icon" aria-hidden="true">!</span
-                  ><span class="tiny-label">QUARANTINED</span
-                  ><strong data-stat="quarantine">7</strong
-                  ><span>Original values + explicit reasons</span>
-                </div>
-              </div>
-              <div class="visual-bottom">
-                <span class="status-dot"></span> No silent deletion. No unexplained rows.
-              </div>
+            <div>
+              <span class="eyebrow">THE USEFUL RESULT</span>
+              <p>
+                Do those steps once, consistently. Let the researcher spend time
+                on the question they actually want to answer.
+              </p>
             </div>
           </div>
-          <div class="hero-ledger">
-            <div><span>INPUT</span><strong>CSV files</strong></div>
-            <div><span>TRANSFORM</span><strong>Polars</strong></div>
-            <div><span>STORE</span><strong>Parquet</strong></div>
-            <div><span>RESEARCH</span><strong>DuckDB + Python</strong></div>
-            <div><span>MODE</span><strong>Recorded pipeline outputs</strong></div>
-          </div>
-          <div class="snapshot-notice" id="snapshot-notice" role="status">
-            <span class="status-dot"></span><span>Loading the evidence exported from Python…</span
-            ><a href="assets/evidence.json" download
-              >Download evidence <span aria-hidden="true">↓</span></a
-            >
-          </div>
+          <p class="data-status" id="data-status" role="status">
+            Loading the recorded Python run…
+          </p>
         </section>
 
-        <section class="stage" id="inputs" aria-labelledby="inputs-heading">
+        <section class="stage" id="read">
           <div class="section-topline">
-            <span class="stage-label">01 / THE RAW INPUT</span
+            <span class="eyebrow">01 / READ THE FILE</span
             ><a
-              class="implementation-link"
               data-source="ingestion"
               href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/ingestion.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >ingestion.py <span aria-hidden="true">↗</span></a
+              >See the code ↗</a
             >
           </div>
-          <div class="section-heading">
-            <h2 id="inputs-heading">Begin with a known input.</h2>
-            <p>
-              One row describes one security, on one date, from one source. The first job is to know
-              exactly what arrived.
-            </p>
-          </div>
-          <div class="context-strip">
-            <span><b>50</b> synthetic equities</span
-            ><span><b>5 years</b> of weekday observations</span
-            ><span><b>Seed 42</b> repeatable generation</span
-            ><span><b>CSV</b> portable text input</span>
-          </div>
-          <div class="surface input-surface">
+          <h2>Start with one row per stock, per date.</h2>
+          <p class="section-intro">
+            The input is a CSV: a plain-text spreadsheet. Each row tells us what
+            happened to a stock’s price and trading volume on a particular date.
+          </p>
+          <div class="surface">
             <div class="surface-header">
-              <div>
-                <span class="file-dot"></span><strong>synthetic_prices.csv</strong
-                ><span class="muted"> / first 6 records</span>
-              </div>
-              <a class="subtle-link" href="assets/synthetic-sample.csv" download
-                >Download sample <span aria-hidden="true">↓</span></a
-              >
+              <strong>An example of what arrives</strong
+              ><span class="muted">Actual rows from the synthetic file</span>
             </div>
             <div class="table-scroll">
-              <table class="data-table input-table">
+              <table>
                 <caption class="sr-only">
-                  First six raw synthetic observations
-                </caption>
-                <thead id="input-head"></thead>
-                <tbody id="input-body"></tbody>
-              </table>
-            </div>
-            <div class="surface-foot">
-              <span class="legend-dot error"></span> Deliberate defects are included to demonstrate
-              the checks. Values shown here are raw text.
-            </div>
-          </div>
-          <div class="explanation-grid">
-            <div>
-              <span class="explanation-label">WHY THIS MATTERS</span>
-              <p>
-                Real files arrive with different headers, malformed dates, repeated observations,
-                and missing values. A correct analysis starts with a consistent interpretation of
-                those files.
-              </p>
-            </div>
-            <div>
-              <span class="explanation-label">WHAT IS RECORDED</span>
-              <p>
-                Files are discovered in a deterministic order. Each row retains its original file
-                and record number, so an error can be traced back to the input.
-              </p>
-            </div>
-          </div>
-          <details class="code-detail" data-code="ingestion">
-            <summary>
-              <span class="code-brackets">&lt;/&gt;</span> See the actual lazy CSV scan
-              <span class="detail-plus">+</span>
-            </summary>
-            <pre><code></code></pre>
-          </details>
-          <p class="boundary-note">
-            Calendar boundary: weekdays approximate trading sessions. Exchange holidays,
-            suspensions, and listing histories are not modeled.
-          </p>
-        </section>
-
-        <section class="stage" id="normalize" aria-labelledby="normalize-heading">
-          <div class="section-topline">
-            <span class="stage-label">02 / THE DATA CONTRACT</span
-            ><a
-              class="implementation-link"
-              data-source="normalization"
-              href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/transformations.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >transformations.py <span aria-hidden="true">↗</span></a
-            >
-          </div>
-          <div class="section-heading">
-            <h2 id="normalize-heading">Different files. One shared language.</h2>
-            <p>
-              Normalize the names, parse the dates, and make numeric types explicit. The
-              configuration makes those choices visible.
-            </p>
-          </div>
-          <div class="normalization-layout">
-            <div class="surface mapping-panel">
-              <div class="surface-header">
-                <strong>The canonical schema</strong><span class="mini-tag">8 columns</span>
-              </div>
-              <div class="mapping-header">
-                <span>INCOMING FIELD</span><span></span><span>CANONICAL FIELD</span
-                ><span>TYPE</span>
-              </div>
-              <div id="mapping-rows"></div>
-            </div>
-            <div class="contract-aside">
-              <span class="eyebrow">A SINGLE OBSERVATION KEY</span>
-              <div class="observation-key">
-                <span>symbol</span><b>+</b><span>date</span><b>+</b><span>source</span>
-              </div>
-              <h3>Keep sources independent.</h3>
-              <p>
-                Two feeds can report different prices for the same stock and date. The source stays
-                in the key—and in every lag and rolling calculation.
-              </p>
-              <div class="definition-note">
-                <strong>Schema</strong
-                ><span>The agreed column names, types, and required values.</span>
-              </div>
-              <details class="code-detail yaml-detail">
-                <summary>Read the configuration <span class="detail-plus">+</span></summary>
-                <pre><code id="yaml-code"></code></pre>
-              </details>
-            </div>
-          </div>
-          <div class="before-after">
-            <div>
-              <span class="tiny-label">RAW TEXT</span
-              ><code>" syn0001 " <span>·</span> "2025-01-02" <span>·</span> "105.50"</code>
-            </div>
-            <span class="transform-arrow" aria-hidden="true">→</span>
-            <div>
-              <span class="tiny-label">ILLUSTRATIVE NORMALIZED VALUES</span
-              ><code>"SYN0001" <span>·</span> Date <span>·</span> 105.50</code>
-            </div>
-          </div>
-          <p class="small-note">
-            The illustration above explains the conversion. The inspector below contains exact
-            values from the generated dataset. Nonempty values that cannot be parsed retain their
-            raw text and receive an explicit parse error.
-          </p>
-          <details class="code-detail" data-code="normalization">
-            <summary>
-              <span class="code-brackets">&lt;/&gt;</span> Inspect the normalization expressions
-              <span class="detail-plus">+</span>
-            </summary>
-            <pre><code></code></pre>
-          </details>
-        </section>
-
-        <section class="stage" id="validate" aria-labelledby="validate-heading">
-          <div class="section-topline">
-            <span class="stage-label">03 / VALIDATION & ROUTING</span
-            ><a
-              class="implementation-link"
-              data-source="validation"
-              href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/validation.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >validation.py <span aria-hidden="true">↗</span></a
-            >
-          </div>
-          <div class="section-heading">
-            <h2 id="validate-heading">Every row gets a reason.</h2>
-            <p>
-              A financial invariant is an error. An unusual observation can still be legitimate. The
-              pipeline treats them differently.
-            </p>
-          </div>
-          <div class="quality-layout">
-            <div class="surface rules-panel">
-              <div class="surface-header">
-                <strong>Required checks</strong><span class="tiny-label">RECORDED ERRORS</span>
-              </div>
-              <div id="rule-list"></div>
-              <div class="surface-foot">
-                A row can fail more than one rule. Category counts can exceed the 7 quarantined
-                records.
-              </div>
-            </div>
-            <div class="policy-panel">
-              <div class="panel-eyebrow">AN EXPLICIT POLICY DECISION</div>
-              <h3>What should happen<br />when a record fails?</h3>
-              <div
-                class="segmented-control policy-control"
-                role="group"
-                aria-label="Preview error handling policy"
-              >
-                <button type="button" class="active" data-policy="quarantine" aria-pressed="true">
-                  Quarantine</button
-                ><button type="button" data-policy="reject" aria-pressed="false">Reject run</button>
-              </div>
-              <div class="policy-result" id="policy-result" aria-live="polite"></div>
-              <p class="small-note">
-                Policy preview from Python validation results. Changing this control does not rerun
-                or replace the stored dataset.
-              </p>
-            </div>
-          </div>
-          <div class="inspector-title">
-            <div>
-              <h3>Follow an individual record.</h3>
-              <p>Compare its raw fields, normalized values, and exact decision.</p>
-            </div>
-            <span class="mini-tag">34 selected input records</span>
-          </div>
-          <div class="surface record-surface">
-            <div class="surface-header inspector-header">
-              <div class="record-filters" role="group" aria-label="Filter selected records">
-                <button class="active" type="button" data-record-filter="all" aria-pressed="true">
-                  All</button
-                ><button type="button" data-record-filter="quarantined" aria-pressed="false">
-                  Quarantined</button
-                ><button type="button" data-record-filter="warning" aria-pressed="false">
-                  Warnings</button
-                ><button type="button" data-record-filter="valid" aria-pressed="false">
-                  Valid
-                </button>
-              </div>
-              <span class="muted" id="record-count"></span>
-            </div>
-            <div class="table-scroll record-scroll">
-              <table class="data-table">
-                <caption class="sr-only">
-                  Selected records and validation outcomes; inspect a record to see its complete
-                  provenance
+                  Example raw price records
                 </caption>
                 <thead>
                   <tr>
-                    <th>Source row</th>
-                    <th>Symbol</th>
-                    <th>Date</th>
-                    <th class="numeric">Close</th>
-                    <th>Decision</th>
-                    <th><span class="sr-only">Inspect record</span></th>
+                    <th>Ticker</th>
+                    <th>Trade date</th>
+                    <th>Close price</th>
+                    <th>Shares traded</th>
                   </tr>
                 </thead>
-                <tbody id="record-body"></tbody>
+                <tbody id="raw-rows"></tbody>
               </table>
             </div>
-            <div class="surface-foot">
-              The duplicate pair is fully quarantined. No arbitrary first or last record is
-              selected.
-            </div>
           </div>
-          <div class="warning-panel">
-            <div class="warning-icon" aria-hidden="true">!</div>
+          <div class="explain-grid">
             <div>
-              <span class="eyebrow">WARN, THEN RETAIN</span>
-              <h3>A large movement is a question, not a verdict.</h3>
+              <h3>What do these words mean?</h3>
               <p>
-                The synthetic price spike and volume spike stay in the dataset. Extreme returns,
-                large volume changes, stale closes, and approximate weekday gaps are warning
-                categories.
+                <strong>Ticker</strong> identifies the stock.
+                <strong>Close</strong> is its price at the end of the day.
+                <strong>Volume</strong> is the number of shares traded. The full
+                file also includes the opening, highest, and lowest prices.
               </p>
-              <div class="threshold-row">
-                <label for="warning-threshold">Flag absolute price returns above</label
-                ><select id="warning-threshold">
-                  <option value="0.05">5%</option>
-                  <option value="0.1">10%</option>
-                  <option value="0.25" selected>25%</option>
-                  <option value="0.5">50%</option>
-                  <option value="1">100%</option>
-                  <option value="3">300%</option></select
-                ><strong id="threshold-count" aria-live="polite"></strong>
-              </div>
-              <span class="small-note"
-                >Threshold comparisons are precomputed from the same retained observations. The
-                stored run uses 25%; warning flags never remove rows.</span
-              >
+            </div>
+            <div>
+              <h3>Why keep the original row?</h3>
+              <p>
+                If a record fails a check, we need to point back to the file and
+                row it came from. The project keeps that information alongside
+                the data.
+              </p>
             </div>
           </div>
-          <details class="code-detail" data-code="validation">
-            <summary>
-              <span class="code-brackets">&lt;/&gt;</span> Inspect error expressions and warning
-              logic <span class="detail-plus">+</span>
-            </summary>
-            <pre><code></code></pre>
-          </details>
+          <p class="takeaway">
+            <strong>After this step:</strong> we know what arrived and where
+            every record came from.
+          </p>
         </section>
 
-        <section class="stage" id="analytics" aria-labelledby="analytics-heading">
+        <section class="stage" id="standardize">
           <div class="section-topline">
-            <span class="stage-label">04 / FINANCIAL TRANSFORMATIONS</span
+            <span class="eyebrow">02 / MAKE IT CONSISTENT</span
             ><a
-              class="implementation-link"
+              data-source="normalization"
+              href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/transformations.py"
+              >See the code ↗</a
+            >
+          </div>
+          <h2>Give every field one clear meaning.</h2>
+          <p class="section-intro">
+            Files can use different names and formats. A short configuration
+            tells the project which column means “stock,” which means “date,”
+            and how to read each value.
+          </p>
+          <div class="surface mapping">
+            <div>
+              <span class="eyebrow">FROM THE FILE</span
+              ><span class="eyebrow">IN THE DATASET</span>
+            </div>
+            <div>
+              <code>ticker: " syn0001 "</code
+              ><span>→ <code>symbol: "SYN0001"</code></span>
+            </div>
+            <div>
+              <code>trade_date: "2025-01-02"</code><span>→ A proper date</span>
+            </div>
+            <div>
+              <code>close: "101.50"</code
+              ><span>→ A decimal number: <code>101.50</code></span>
+            </div>
+            <div>
+              <code>volume: "250000"</code
+              ><span>→ A whole number: <code>250000</code></span>
+            </div>
+          </div>
+          <p class="caption">
+            Illustrative values. The same rules are applied to every row in the
+            file.
+          </p>
+          <p>
+            A value such as <code>not-a-date</code> cannot become a real date.
+            It is marked as a parsing error so it can be reviewed in the next
+            step.
+          </p>
+          <p class="takeaway">
+            <strong>After this step:</strong> the columns have consistent names
+            and types. Formatting mistakes are visible.
+          </p>
+        </section>
+
+        <section class="stage" id="check">
+          <div class="section-topline">
+            <span class="eyebrow">03 / CHECK THE RECORDS</span
+            ><a
+              data-source="validation"
+              href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/validation.py"
+              >See the code ↗</a
+            >
+          </div>
+          <h2>Separate broken records from unusual ones.</h2>
+          <p class="section-intro">
+            A negative price is invalid. A big price jump could be real. Those
+            need different treatment.
+          </p>
+          <div class="explain-grid rule-cards">
+            <article class="surface">
+              <span class="tag bad">ERROR → SET ASIDE</span>
+              <h3>Something is unusable or ambiguous.</h3>
+              <p>
+                A missing stock name, a broken date, a nonpositive price,
+                negative volume, inconsistent high/low prices, or a repeated
+                stock/date/source.
+              </p>
+              <p>
+                The record is saved separately with its reason. This is called
+                <strong>quarantine</strong>. Both copies of a duplicate are set
+                aside.
+              </p>
+            </article>
+            <article class="surface">
+              <span class="tag warn">WARNING → KEEP & FLAG</span>
+              <h3>Something deserves a closer look.</h3>
+              <p>
+                A very large return, a sudden volume change, several unchanged
+                prices, or a gap between expected weekdays.
+              </p>
+              <p>
+                The record stays in the dataset. A warning says “review this”;
+                it does not prove the value is wrong.
+              </p>
+            </article>
+          </div>
+          <div
+            class="reconciliation"
+            id="row-accounting"
+            aria-label="Recorded row accounting"
+          ></div>
+          <div class="surface">
+            <div class="surface-header">
+              <strong>What actually failed in this example?</strong
+              ><span class="muted">One row may have more than one reason</span>
+            </div>
+            <div id="error-examples"></div>
+          </div>
+          <details>
+            <summary>What if the file should be rejected entirely?</summary>
+            <p>
+              The configuration can stop the run when a chosen category fails,
+              instead of continuing with valid rows. A required missing value
+              stops a run by default; this demonstration explicitly allows
+              quarantine. A rejected run leaves the previous saved dataset
+              active.
+            </p>
+          </details>
+          <p class="takeaway">
+            <strong>After this step:</strong> the retained records can be used,
+            and the rejected records remain available for review.
+          </p>
+        </section>
+
+        <section class="stage" id="calculate">
+          <div class="section-topline">
+            <span class="eyebrow">04 / ADD USEFUL MEASURES</span
+            ><a
               data-source="analytics"
               href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/analytics.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >analytics.py <span aria-hidden="true">↗</span></a
+              >See the code ↗</a
             >
           </div>
-          <div class="section-heading">
-            <h2 id="analytics-heading">Make the mathematics visible.</h2>
-            <p>
-              Sort by symbol, source, and date. Calculate only within each group, using the current
-              and prior retained observations.
-            </p>
-          </div>
-          <div class="formula-layout">
-            <div class="return-calculator">
-              <div class="panel-eyebrow">TRY A SIMPLE EXAMPLE</div>
-              <div class="price-inputs">
-                <label
-                  >Previous close<span
-                    ><b>$</b
-                    ><input
-                      id="previous-price"
-                      type="number"
-                      value="100"
-                      min="0.01"
-                      step="0.01"
-                      inputmode="decimal" /></span></label
-                ><span aria-hidden="true">→</span
-                ><label
-                  >Current close<span
-                    ><b>$</b
-                    ><input
-                      id="current-price"
-                      type="number"
-                      value="110"
-                      min="0.01"
-                      step="0.01"
-                      inputmode="decimal" /></span
-                ></label>
-              </div>
-              <div class="calculator-results" aria-live="polite">
-                <div>
-                  <span>Simple price return</span><strong id="simple-result">10.00%</strong
-                  ><code>current / previous − 1</code>
-                </div>
-                <div>
-                  <span>Log price return</span><strong id="log-result">9.53%</strong
-                  ><code>ln(current) − ln(previous)</code>
-                </div>
-              </div>
-              <p class="small-note" id="calculator-note">
-                An editable mathematical illustration. It does not change the recorded prices.
-              </p>
-            </div>
-            <div class="volatility-explainer">
-              <div class="panel-eyebrow">TRAILING REALIZED VOLATILITY</div>
-              <div class="volatility-formula">std(<span>last 20 log returns</span>) × √252</div>
-              <div class="window-dots" aria-label="21 closing prices are required for 20 returns">
-                <span></span><span></span><span></span><span></span><span></span><span></span
-                ><span></span><span></span><span></span><span></span><span></span><span></span
-                ><span></span><span></span><span></span><span></span><span></span><span></span
-                ><span></span><span></span><span></span>
-              </div>
-              <strong>21 prices → 20 returns → one volatility estimate</strong>
+          <h2>Turn prices into simple research inputs.</h2>
+          <p class="section-intro">
+            The project sorts the retained rows by stock, source, and date. It
+            then calculates the same measures for each stock using only its
+            current and earlier observations.
+          </p>
+          <article class="surface return-example">
+            <div>
+              <span class="eyebrow">1 / PRICE RETURN</span>
+              <h3>How much did the price change?</h3>
               <p>
-                Sample standard deviation (ddof = 1). Full 20- or 30-return windows. Annualized
-                using 252 as a convention. Insufficient history stays null.
+                If yesterday’s close was 100 and today’s close is 102, the price
+                rose by 2%.
               </p>
-            </div>
-          </div>
-          <div class="surface chart-surface">
-            <div class="surface-header chart-header">
-              <div>
-                <strong>Inspect the retained history</strong
-                ><span class="muted"> / actual Polars output</span>
-              </div>
-              <div class="chart-controls">
-                <label class="sr-only" for="chart-symbol">Security</label
-                ><select id="chart-symbol">
-                  <option>SYN0000</option>
-                  <option>SYN0001</option>
-                  <option>SYN0012</option></select
-                ><label class="sr-only" for="chart-range">History range</label
-                ><select id="chart-range">
-                  <option value="first60">First 60 observations</option>
-                  <option value="2025">2025</option>
-                  <option value="all">Full history</option>
-                </select>
-              </div>
-            </div>
-            <div class="metric-tabs" role="group" aria-label="Chart metric">
-              <button type="button" class="active" data-metric="close" aria-pressed="true">
-                Close price</button
-              ><button type="button" data-metric="simple_return" aria-pressed="false">
-                Price return</button
-              ><button type="button" data-metric="realized_vol_20" aria-pressed="false">HV20</button
-              ><button type="button" data-metric="realized_vol_30" aria-pressed="false">HV30</button
-              ><button type="button" data-metric="average_volume_20" aria-pressed="false">
-                Avg. volume</button
-              ><button type="button" data-metric="dollar_volume" aria-pressed="false">
-                Dollar volume
-              </button>
-            </div>
-            <div class="chart-stat">
-              <div>
-                <span class="tiny-label" id="chart-metric-label">CLOSE PRICE</span
-                ><strong id="chart-last-value"></strong>
-              </div>
-              <div class="chart-caption" id="chart-caption"></div>
-            </div>
-            <div
-              class="chart-wrap"
-              id="chart-wrap"
-              tabindex="0"
-              aria-label="Price history chart. Use left and right arrow keys to inspect observations."
-            >
-              <svg
-                id="history-chart"
-                viewBox="0 0 900 290"
-                role="img"
-                aria-labelledby="chart-svg-title chart-svg-description"
+              <code class="formula"
+                >return = today’s close ÷ previous close − 1</code
               >
-                <title id="chart-svg-title">Recorded synthetic price history</title>
-                <desc id="chart-svg-description">
-                  Actual retained observations from the Python pipeline. Use the selectors to
-                  explore securities, time ranges, and metrics.
-                </desc>
-              </svg>
-              <div class="chart-tooltip" id="chart-tooltip" hidden></div>
-            </div>
-            <div class="surface-foot chart-foot">
-              <span
-                ><span class="legend-dot blue"></span> synthetic_weekdays · observed sessions · no
-                imputation</span
-              ><button class="subtle-link" id="download-chart" type="button">
-                Download plotted values ↓
-              </button>
-            </div>
-            <details class="plotted-details">
-              <summary>View the last 12 plotted observations</summary>
-              <div class="table-scroll">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th class="numeric" id="plotted-column">Value</th>
-                      <th>Warning flags</th>
-                    </tr>
-                  </thead>
-                  <tbody id="plotted-body"></tbody>
-                </table>
-              </div>
-            </details>
-          </div>
-          <div class="explanation-grid">
-            <div>
-              <span class="explanation-label">PRESERVE HISTORICAL CONTEXT</span>
-              <p>
-                Returns and rolling statistics are calculated before a research date filter. A 2025
-                slice therefore keeps the prior history needed for its first return and volatility
-                estimate.
+              <p class="caption">
+                “Previous” means the previous retained observation. A missing
+                date means the return spans that gap.
               </p>
             </div>
-            <div>
-              <span class="explanation-label">STATE WHAT THE MEASURE MEANS</span>
+            <form id="return-form">
+              <label
+                >Previous close<input
+                  id="previous-close"
+                  type="number"
+                  min="0.000001"
+                  step="any"
+                  value="100"
+                  required /></label
+              ><label
+                >Current close<input
+                  id="current-close"
+                  type="number"
+                  min="0.000001"
+                  step="any"
+                  value="102"
+                  required /></label
+              ><output id="return-result" aria-live="polite">+2.00%</output
+              ><span class="caption"
+                >Editable illustration, separate from the dataset</span
+              >
+            </form>
+          </article>
+          <div class="explain-grid metric-cards">
+            <article>
+              <span class="eyebrow">2 / RECENT VOLATILITY</span>
+              <h3>How uneven have price moves been?</h3>
               <p>
-                These are unadjusted price returns, not total shareholder returns. Missing sessions
-                are not filled. A return across a gap spans the gap.
+                Look at the last 20 log returns and measure how much they vary.
+                A higher value means larger recent swings. This describes what
+                happened; it does not predict the next move.
               </p>
-            </div>
+              <p class="caption">
+                Needs 21 prices to produce 20 returns. Until then, the value is
+                blank.
+              </p>
+            </article>
+            <article>
+              <span class="eyebrow">3 / AVERAGE VOLUME</span>
+              <h3>How much has the stock traded?</h3>
+              <p>
+                Average the number of shares traded over the last 20
+                observations. This provides a simple picture of recent trading
+                activity.
+              </p>
+              <p class="caption">
+                A volume measure alone does not establish that a trade can be
+                executed easily.
+              </p>
+            </article>
           </div>
-          <details class="code-detail" data-code="analytics">
-            <summary>
-              <span class="code-brackets">&lt;/&gt;</span> Inspect the actual grouped rolling
-              expressions <span class="detail-plus">+</span>
-            </summary>
-            <pre><code></code></pre>
+          <details>
+            <summary>Show the precise calculation choices</summary>
+            <p>
+              Volatility is the sample standard deviation of 20 trailing log
+              returns, multiplied by √252 to express it on an annualized scale.
+              A log return is ln(current close) − ln(previous close). The
+              library also exposes 30-return volatility and approximate dollar
+              volume (close × volume).
+            </p>
+            <p>
+              Groups stay separate by stock and data source. Missing
+              observations are never filled in. Analytics are calculated before
+              a researcher selects dates, so the first displayed date can use
+              earlier history. If a derived calculation exceeds the supported
+              numeric range, the run stops for input review instead of
+              repeatedly removing rows.
+            </p>
           </details>
+          <p class="takeaway">
+            <strong>After this step:</strong> the dataset contains prices plus a
+            few consistently calculated measures.
+          </p>
         </section>
 
-        <section class="stage" id="storage" aria-labelledby="storage-heading">
+        <section class="stage" id="save">
           <div class="section-topline">
-            <span class="stage-label">05 / SAFE PUBLICATION</span
+            <span class="eyebrow">05 / SAVE & USE IT</span
             ><a
-              class="implementation-link"
               data-source="storage"
               href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/storage.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >storage.py <span aria-hidden="true">↗</span></a
+              >See the code ↗</a
             >
           </div>
-          <div class="section-heading">
-            <h2 id="storage-heading">Finish writing. Then make it current.</h2>
-            <p>
-              Each run produces a complete, immutable snapshot. One small manifest points
-              researchers to the active version.
-            </p>
-          </div>
-          <div class="publication-layout">
-            <div class="publication-diagram">
-              <div class="panel-eyebrow">PUBLICATION ILLUSTRATION</div>
-              <div class="publication-steps" role="group" aria-label="Explain publication stages">
-                <button class="active" type="button" data-publication="0" aria-pressed="true">
-                  <span>1</span> Stage</button
-                ><span aria-hidden="true">→</span
-                ><button type="button" data-publication="1" aria-pressed="false">
-                  <span>2</span> Complete</button
-                ><span aria-hidden="true">→</span
-                ><button type="button" data-publication="2" aria-pressed="false">
-                  <span>3</span> Switch
-                </button>
-              </div>
-              <div class="publication-state" id="publication-state" aria-live="polite"></div>
-              <label class="failure-toggle"
-                ><input id="publication-failure" type="checkbox" /><span
-                  >Illustrate a failure before the pointer switch</span
-                ></label
-              >
-              <p class="small-note">
-                A conceptual replay of the implemented publication boundary. No files are changed by
-                this control.
-              </p>
-            </div>
-            <div class="snapshot-files">
-              <div class="surface-header">
-                <strong>The recorded snapshot</strong><span class="mini-tag">Parquet · Zstd</span>
-              </div>
-              <ul>
-                <li>
-                  <span class="file-type">PQ</span>
-                  <div>
-                    <strong>prices.parquet</strong
-                    ><span>Validated prices, analytics, provenance, warnings</span>
-                  </div>
-                </li>
-                <li>
-                  <span class="file-type amber">PQ</span>
-                  <div>
-                    <strong>quarantine.parquet</strong
-                    ><span>Rejected records, raw values, error categories</span>
-                  </div>
-                </li>
-                <li>
-                  <span class="file-type muted-file">{ }</span>
-                  <div>
-                    <strong>report.json</strong
-                    ><span>Row accounting, policies, hashes, duration</span>
-                  </div>
-                </li>
-                <li>
-                  <span class="file-type muted-file">{ }</span>
-                  <div>
-                    <strong>metadata.json</strong
-                    ><span>Version ID and reproducibility information</span>
-                  </div>
-                </li>
-              </ul>
-              <a href="assets/pipeline-report.json" class="subtle-link" download
-                >Download the recorded processing report ↓</a
-              >
-            </div>
-          </div>
-          <div class="audit-strip">
-            <div><span class="tiny-label">INPUT SHA-256</span><code id="input-hash"></code></div>
-            <div>
-              <span class="tiny-label">SNAPSHOT VERSION</span><code id="snapshot-version"></code>
-            </div>
-          </div>
-          <div class="explanation-grid">
-            <div>
-              <span class="explanation-label">A SAFE REPEAT</span>
+          <h2>Give the next analysis a dependable starting point.</h2>
+          <p class="section-intro">
+            Save the cleaned data as Parquet: a compact file format that
+            remembers dates and number types. Save the quarantined records and a
+            report alongside it.
+          </p>
+          <div class="output-grid">
+            <article class="surface">
+              <span class="file-label">DATA</span>
+              <h3>prices.parquet</h3>
               <p>
-                Identical input creates a new audited snapshot, not an append. The active logical
-                dataset has the same records. Readers resolve one version and finish against it.
+                The retained records and calculated measures, ready for
+                analysis.
+              </p>
+            </article>
+            <article class="surface">
+              <span class="file-label">REVIEW</span>
+              <h3>quarantine.parquet</h3>
+              <p>
+                The records set aside, their original values, and the reasons.
+              </p>
+            </article>
+            <article class="surface">
+              <span class="file-label">REPORT</span>
+              <h3>report.json</h3>
+              <p>
+                Row counts, warning counts, input fingerprints, and run
+                settings.
+              </p>
+            </article>
+          </div>
+          <div class="explain-grid">
+            <div>
+              <h3>How does someone use it?</h3>
+              <p>
+                A Python script or DuckDB query can select a stock and a date
+                range from the saved file. DuckDB is a local tool for asking
+                spreadsheet-like questions using SQL.
               </p>
             </div>
             <div>
-              <span class="explanation-label">A DELIBERATE BOUNDARY</span>
+              <h3>What happens on the next run?</h3>
               <p>
-                Single writer, local filesystem. Old snapshots are retained. Atomic visibility is
-                not a distributed transaction or a power-loss durability guarantee.
+                The project saves a new complete version, then marks it as
+                current. A rerun replaces the active dataset instead of
+                appending duplicate rows. A failed run keeps the previous
+                version available.
               </p>
             </div>
+          </div>
+          <div class="next-step">
+            <div>
+              <span class="eyebrow">THE PRACTICAL USE CASE</span>
+              <h3>“I need a clean price history for my research notebook.”</h3>
+              <p>
+                Choose a stock, inspect its returns and recent volatility,
+                review any flags, then export the selected rows.
+              </p>
+            </div>
+            <a class="button primary" href="workspace.html"
+              >Open the research workspace ↗</a
+            >
           </div>
         </section>
 
-        <section class="stage" id="query" aria-labelledby="query-heading">
-          <div class="section-topline">
-            <span class="stage-label">06 / ANALYTICAL ACCESS</span
-            ><a
-              class="implementation-link"
-              data-source="query"
-              href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/queries.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >queries.py <span aria-hidden="true">↗</span></a
-            >
-          </div>
-          <div class="section-heading">
-            <h2 id="query-heading">Ask a question. Inspect the answer.</h2>
-            <p>
-              DuckDB queries the active Parquet snapshot directly. The same data is available as a
-              Polars table through the Python API.
-            </p>
-          </div>
-          <div class="query-tabs" role="group" aria-label="Choose a recorded DuckDB analysis">
-            <button type="button" class="active" data-query="security_summary" aria-pressed="true">
-              Security summary</button
-            ><button type="button" data-query="daily_returns" aria-pressed="false">
-              Daily returns</button
-            ><button type="button" data-query="rolling_volatility" aria-pressed="false">
-              Rolling volatility
-            </button>
-          </div>
-          <div class="query-workbench">
-            <div class="sql-pane">
-              <div class="sql-pane-header">
-                <span class="tiny-label">THE QUESTION / SQL</span
-                ><button class="copy-button" id="copy-sql" type="button">Copy SQL</button>
-              </div>
-              <pre><code id="sql-code"></code></pre>
-              <div class="sql-context">
-                <span class="status-dot"></span
-                ><span>Single SELECT · grouped by symbol and source</span>
-              </div>
+        <section class="stage closing" id="scope">
+          <span class="eyebrow">WHAT THIS PROJECT DEMONSTRATES</span>
+          <h2>A useful tool with a modest scope.</h2>
+          <p class="section-intro">
+            Repeatable cleaning and basic descriptive analytics for local
+            research. The example uses generated prices so its behavior can be
+            inspected without a market-data subscription.
+          </p>
+          <div class="scope-grid">
+            <div>
+              <h3>What it handles</h3>
+              <p>
+                CSV files, explicit data checks, a small set of calculations,
+                saved versions, and local Python/SQL access.
+              </p>
             </div>
-            <div class="query-explanation">
-              <span class="panel-eyebrow">IN PLAIN ENGLISH</span>
-              <h3 id="query-question"></h3>
-              <p id="query-description"></p>
-              <span class="recorded-badge">Recorded DuckDB output</span>
-              <p class="small-note">
-                Choose a query to inspect SQL executed during the Python export. This page shows its
-                recorded results; it does not execute new SQL.
+            <div>
+              <h3>Where it stops</h3>
+              <p>
+                Live feeds, split/dividend adjustments, trading, forecasts, and
+                shared production operations are outside this project. Weekday
+                checks approximate a calendar and can flag holidays.
               </p>
             </div>
           </div>
-          <div class="surface query-results">
-            <div class="surface-header">
-              <strong>Results</strong><span class="muted" id="query-count"></span>
-            </div>
-            <div class="table-scroll">
-              <table class="data-table">
-                <caption class="sr-only">
-                  Recorded DuckDB query results
-                </caption>
-                <thead id="query-head"></thead>
-                <tbody id="query-body"></tbody>
-              </table>
-            </div>
-          </div>
-          <div class="python-api-note">
-            <span class="file-type muted-file">PY</span>
-            <div>
-              <strong>The same result, available to another script.</strong
-              ><code>load_prices(symbols=["SYN0000"], start="2025-01-01", end="2025-12-31")</code>
-            </div>
-          </div>
-          <details class="code-detail" data-code="query">
+          <details id="supporting-evidence">
             <summary>
-              <span class="code-brackets">&lt;/&gt;</span> Inspect the read-only query safeguards
-              <span class="detail-plus">+</span>
+              Supporting evidence, tests, and measured performance
             </summary>
-            <pre><code></code></pre>
-          </details>
-        </section>
-
-        <section class="stage" id="performance" aria-labelledby="performance-heading">
-          <div class="section-topline">
-            <span class="stage-label">07 / MEASURED PERFORMANCE</span
-            ><a
-              class="implementation-link"
-              data-source="benchmark"
-              href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/src/research_data_engine/benchmarking.py"
-              target="_blank"
-              rel="noopener noreferrer"
-              >benchmarking.py <span aria-hidden="true">↗</span></a
-            >
-          </div>
-          <div class="section-heading">
-            <h2 id="performance-heading">Prove equivalence. Then measure.</h2>
-            <p>
-              Every candidate passes a full-result comparison against pandas before any timing is
-              recorded. Benefits are specific to a workload.
+            <p id="verification">
+              Python verification is available in the repository.
             </p>
-          </div>
-          <div class="benchmark-toolbar">
-            <div class="segmented-control" role="group" aria-label="Benchmark dataset scale">
-              <button type="button" data-scale="100000" aria-pressed="false">100k rows</button
-              ><button type="button" class="active" data-scale="1000000" aria-pressed="true">
-                1M rows
-              </button>
-            </div>
-            <div class="segmented-control" role="group" aria-label="Benchmark measurement">
-              <button type="button" class="active" data-benchmark-metric="wall" aria-pressed="true">
-                Wall time</button
-              ><button type="button" data-benchmark-metric="rss" aria-pressed="false">
-                Peak RSS
-              </button>
-            </div>
-          </div>
-          <div class="surface benchmark-surface">
-            <div class="surface-header">
-              <strong id="benchmark-title">Median elapsed time</strong>
-              <div class="benchmark-legend">
-                <span><i class="baseline"></i>pandas</span
-                ><span><i class="candidate"></i>Polars / DuckDB</span>
-              </div>
-            </div>
-            <div id="benchmark-rows"></div>
-            <div class="surface-foot benchmark-foot">
-              <span id="benchmark-scope"></span
-              ><a href="assets/measured-1000000.json" id="benchmark-download" download
-                >Download measurements ↓</a
-              >
-            </div>
-          </div>
-          <div class="benchmark-reading" id="benchmark-reading"></div>
-          <div class="method-grid">
-            <div>
-              <span class="tiny-label">CORRECTNESS</span><strong>Full-result comparison</strong>
-              <p>
-                Keys, row counts, null patterns, and numerical values. Relative tolerance 1e−8;
-                absolute 1e−10.
-              </p>
-            </div>
-            <div>
-              <span class="tiny-label">TIMING</span><strong>One warmup. Three repetitions.</strong>
-              <p>
-                Median of materialized calls, isolated engine/workload processes. Warm OS cache.
-                Wall and CPU time recorded separately.
-              </p>
-            </div>
-            <div>
-              <span class="tiny-label">MEMORY</span><strong>Whole-process RSS, sampled.</strong>
-              <p>
-                Includes native allocations; 2 ms sampling can miss short peaks. Imports, inputs,
-                and retained allocator memory affect absolute RSS.
-              </p>
-            </div>
-          </div>
-          <details class="code-detail" data-code="benchmark">
-            <summary>
-              <span class="code-brackets">&lt;/&gt;</span> Inspect the correctness gate
-              <span class="detail-plus">+</span>
-            </summary>
-            <pre><code></code></pre>
-          </details>
-        </section>
-
-        <section class="stage evidence-stage" id="evidence" aria-labelledby="evidence-heading">
-          <div class="section-topline">
-            <span class="stage-label">08 / VERIFICATION & BOUNDARIES</span
-            ><a
-              class="implementation-link"
-              href="https://github.com/GurshanSidhar7/BMOQUANT/tree/main/tests"
-              target="_blank"
-              rel="noopener noreferrer"
-              >Explore the tests <span aria-hidden="true">↗</span></a
-            >
-          </div>
-          <div class="section-heading">
-            <h2 id="evidence-heading">Confidence comes with evidence.<br />And clear limits.</h2>
             <p>
-              The walkthrough shows a real, local research utility. Its checks are inspectable, and
-              its current boundaries are explicit.
+              Tests compare returns and volatility with independent numerical
+              references, check source boundaries and earlier history, and
+              verify that publication failures preserve saved data.
             </p>
-          </div>
-          <div class="verification-banner">
-            <span class="verification-check" aria-hidden="true">✓</span>
-            <div>
-              <strong id="verification-heading">Automated financial and pipeline checks</strong
-              ><span id="verification-details"
-                >Independent return/volatility references, source boundaries, idempotency,
-                publication failure recovery, SQL restrictions, and the complete CLI demo.</span
-              >
-            </div>
-            <a
-              href="https://github.com/GurshanSidhar7/BMOQUANT/actions"
-              target="_blank"
-              rel="noopener noreferrer"
-              >View CI ↗</a
-            >
-          </div>
-          <div class="boundary-table">
-            <div class="boundary-table-head">
-              <span>IMPLEMENTED TODAY</span><span>EXPLICIT BOUNDARY / NEXT EXTENSION</span>
-            </div>
-            <div>
-              <span>Reproducible synthetic OHLCV</span
-              ><span>Licensed real feeds and stable security identifiers are future work.</span>
-            </div>
-            <div>
-              <span>Price returns and trailing realized volatility</span
-              ><span
-                >Corporate-action adjustments and total shareholder returns are not
-                implemented.</span
-              >
-            </div>
-            <div>
-              <span>Optional weekday-gap warnings</span
-              ><span>An exchange calendar is not bundled; holidays can be false positives.</span>
-            </div>
-            <div>
-              <span>Lazy scans and in-memory global validation</span
-              ><span>The complete ETL pipeline is not guaranteed to operate out of core.</span>
-            </div>
-            <div>
-              <span>Immutable snapshots with an atomic manifest</span
-              ><span
-                >Concurrent writers, automatic pruning, and distributed storage are future
-                work.</span
-              >
-            </div>
-            <div>
-              <span>Restricted local analytical SQL</span
-              ><span>The query layer is not a security or resource sandbox for hostile SQL.</span>
-            </div>
-            <div>
-              <span>Measured 100k and 1M benchmark workloads</span
-              ><span
-                >The optional 5M scale was not executed. No performance is claimed for it.</span
-              >
-            </div>
-          </div>
-          <div class="further-details">
-            <details>
-              <summary>Where does lazy processing become eager?</summary>
-              <p>
-                CSV scanning, normalization, and casts form a lazy query. The pipeline materializes
-                the normalized dataset before global duplicate detection, record-level quarantine,
-                sorted analytics, and reporting. That boundary favors a simple, auditable MVP over
-                an out-of-core claim.
-              </p>
-            </details>
-            <details>
-              <summary>What prevents look-ahead bias in the calculations?</summary>
-              <p>
-                Each lag and rolling window stays within a symbol/source group and uses only current
-                and prior retained observations. Tests confirm appending future rows does not change
-                history. Closing prices become available after the close; downstream strategies must
-                still model later execution and point-in-time availability.
-              </p>
-            </details>
-            <details>
-              <summary>Why Polars and DuckDB together?</summary>
-              <p>
-                Polars owns normalization, validation, and canonical financial analytics. DuckDB
-                provides embedded SQL over the resulting Parquet snapshot. Their capabilities
-                overlap; every pipeline stage does not need to pass through both engines.
-              </p>
-            </details>
-            <details>
-              <summary>What does reproducibility mean here?</summary>
-              <p>
-                The same seed, input contents, configuration, and locked software versions reproduce
-                the logical records and financial values. Input SHA-256 fingerprints and recorded
-                settings establish a trail. Run IDs and timestamps intentionally differ.
-              </p>
-            </details>
-          </div>
-          <div class="closing-note">
-            <span class="eyebrow">THE COMPLETE TRACE</span>
-            <p>Known inputs. Explicit rules.<br />Inspectable mathematics. Measured results.</p>
-            <div>
-              <a class="primary-button" href="assets/evidence.json" download
-                >Download the evidence <span aria-hidden="true">↓</span></a
+            <p>
+              The separate benchmark exercise compares matched workloads at 100k
+              and 1M synthetic rows. Its machine-specific results are supporting
+              evidence; the value of this utility is consistent preparation of
+              research data.
+            </p>
+            <div class="download-links">
+              <a href="assets/pipeline-report.json" download>Run report ↓</a
+              ><a href="assets/evidence.json" download>Full evidence ↓</a
+              ><a href="assets/measured-1000000.md">Measured benchmark</a
               ><a
-                class="inline-link"
-                href="https://github.com/GurshanSidhar7/BMOQUANT/blob/main/docs/interview_walkthrough.md"
-                target="_blank"
-                rel="noopener noreferrer"
-                >Read the technical walkthrough ↗</a
+                href="https://github.com/GurshanSidhar7/BMOQUANT/tree/main/tests"
+                >Tests ↗</a
               >
             </div>
-          </div>
+          </details>
+          <button
+            class="button secondary print-button"
+            id="print-page"
+            type="button"
+          >
+            Print this walkthrough
+          </button>
         </section>
-
-        <footer class="site-footer">
-          <div>
-            <span class="brand-name">Research Data Engine</span
-            ><span>Independent portfolio project by Gurshan Sidhar.</span>
-          </div>
+        <footer>
+          <p>Built by Gurshan Sidhar · Independent portfolio project.</p>
           <p>
-            All displayed market observations are synthetic and unadjusted. No BMO commission, use,
-            affiliation, or endorsement is implied.
+            All market data shown is synthetic and unadjusted. No BMO
+            commission, use, or endorsement is implied.
           </p>
           <a href="#overview">Back to top ↑</a>
         </footer>
       </main>
     </div>
-
-    <dialog id="record-dialog" aria-labelledby="record-dialog-title">
-      <div class="dialog-heading">
-        <div>
-          <span class="eyebrow">RECORD PROVENANCE</span>
-          <h2 id="record-dialog-title">Inspect observation</h2>
-        </div>
-        <button
-          type="button"
-          id="close-record"
-          class="dialog-close"
-          aria-label="Close record inspector"
-        >
-          ×
-        </button>
-      </div>
-      <div id="record-dialog-content"></div>
-    </dialog>
-    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
     <noscript
-      ><div class="noscript-note">
-        Enable JavaScript to explore the recorded data. The
-        <a href="assets/pipeline-report.json">pipeline report</a> and
-        <a href="https://github.com/GurshanSidhar7/BMOQUANT">source repository</a> remain available.
-      </div></noscript
+      ><p class="noscript-note">
+        Enable JavaScript to load recorded examples. The explanations and
+        <a href="assets/pipeline-report.json">run report</a> remain available.
+      </p></noscript
     >
   </body>
 </html>

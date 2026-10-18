@@ -171,6 +171,47 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
         ]
         for symbol in ("SYN0000", "SYN0001", "SYN0012"):
             series[symbol] = clean.filter(pl.col("symbol") == symbol).select(columns).to_dicts()
+        # Load one security at a time in the browser; financial calculations still
+        # come from the same validated Parquet snapshot, including pre-start history.
+        history_directory = output / "history"
+        history_directory.mkdir(exist_ok=True)
+        securities = []
+        workspace_columns = [
+            "symbol",
+            "source",
+            "date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "simple_return",
+            "realized_vol_20",
+            "_source_row",
+            "_warnings",
+        ]
+        for index, group in enumerate(
+            clean.partition_by(["symbol", "source"], maintain_order=True)
+        ):
+            relative = f"history/{index:03d}.json"
+            (output / relative).write_text(
+                json.dumps(
+                    portable(group.select(workspace_columns).to_dicts()),
+                    allow_nan=False,
+                    separators=(",", ":"),
+                ),
+                encoding="utf-8",
+            )
+            securities.append(
+                {
+                    "symbol": group["symbol"][0],
+                    "source": group["source"][0],
+                    "start": group["date"].min().isoformat(),
+                    "end": group["date"].max().isoformat(),
+                    "rows": group.height,
+                    "path": relative,
+                }
+            )
         queries = []
         with QueryEngine(config.output.path) as engine:
             for name, title in (
@@ -216,6 +257,7 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
             },
             "records": portable(records),
             "series": portable(series),
+            "workspace": {"securities": securities},
             "queries": portable(queries),
             "policy_preview": {
                 "reject": {
@@ -253,8 +295,8 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
         payload["benchmarks"] = benchmark_data
         write_json(output / "evidence.json", payload)
         manifest = {
-            path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-            for path in sorted(output.iterdir())
+            path.relative_to(output).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in sorted(output.rglob("*"))
             if path.is_file() and path.name != "checksums.json"
         }
         write_json(output / "checksums.json", manifest)
