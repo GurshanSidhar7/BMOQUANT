@@ -1,0 +1,44 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "research-data-engine"
+version = "0.1.0"
+description = "Reproducible financial CSV validation, Polars analytics, and DuckDB research queries."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+dependencies = [
+  "polars>=1.44,<2",
+  "duckdb>=1.5,<2",
+  "numpy>=2.2,<3",
+  "pandas>=2.2,<4",
+  "pyarrow>=19,<25",
+  "pydantic>=2.11,<3",
+  "pyyaml>=6.0,<7",
+  "typer>=0.16,<1",
+  "rich>=14,<15",
+  "psutil>=7,<8",
+]
+
+[project.scripts]
+research-data = "research_data_engine.cli:app"
+
+[dependency-groups]
+dev = ["pytest>=8.3,<10", "ruff>=0.11,<1"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".bootstrap", ".python", ".uv-cache"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/research_data_engine"]

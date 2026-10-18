@@ -1,0 +1,27 @@
+dataset: equity_prices
+input:
+  path: ../data/raw
+  format: csv
+  source: synthetic_weekdays
+  date_format: "%Y-%m-%d"
+schema:
+  symbol: ticker
+  date: trade_date
+  open: open
+  high: high
+  low: low
+  close: close
+  volume: volume
+  source: source
+validation:
+  duplicate_policy: quarantine
+  invalid_price_policy: quarantine
+  missing_value_policy: quarantine
+  malformed_value_policy: quarantine
+  extreme_return_threshold: 0.25
+  volume_change_ratio: 10.0
+  stale_price_window: 5
+  calendar: weekdays
+output:
+  path: ../data/processed/equity_prices
+  format: parquet
