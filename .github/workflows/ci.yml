@@ -20,6 +20,14 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Static walkthrough checks
+        run: |
+          node --test frontend/tests/model.test.mjs
+          node frontend/build.mjs
       - name: CLI and independent end-to-end smoke
         run: |
           uv run research-data --help

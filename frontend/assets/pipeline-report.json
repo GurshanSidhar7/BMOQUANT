@@ -1,0 +1,89 @@
+{
+  "calendar": "weekdays",
+  "config": {
+    "dataset": "equity_prices",
+    "input": {
+      "date_format": "%Y-%m-%d",
+      "format": "csv",
+      "path": "data/raw/synthetic_prices.csv",
+      "source": "synthetic_weekdays"
+    },
+    "output": {
+      "format": "parquet",
+      "path": "data/processed/equity_prices"
+    },
+    "schema": {
+      "close": "close",
+      "date": "trade_date",
+      "high": "high",
+      "low": "low",
+      "open": "open",
+      "source": "source",
+      "symbol": "ticker",
+      "volume": "volume"
+    },
+    "validation": {
+      "calendar": "weekdays",
+      "duplicate_policy": "quarantine",
+      "extreme_return_threshold": 0.25,
+      "invalid_price_policy": "quarantine",
+      "malformed_value_policy": "quarantine",
+      "missing_value_policy": "quarantine",
+      "stale_price_window": 5,
+      "volume_change_ratio": 10.0
+    }
+  },
+  "dataset": "equity_prices",
+  "duration_scope": "scan, fingerprint, materialization, validation, analytics; excludes publication",
+  "errors_by_category": {
+    "duplicate_key": 2,
+    "invalid_ohlc": 1,
+    "invalid_price": 1,
+    "malformed_value": 1,
+    "missing_value": 1,
+    "negative_volume": 1,
+    "nonfinite_price": 1
+  },
+  "execution_timestamp": "2026-10-18T21:16:51.371572+00:00",
+  "input_file_count": 1,
+  "input_files": [
+    {
+      "path": "data/raw/synthetic_prices.csv",
+      "sha256": "1ef933df83805fd41de0e71eb11f8b23efdd2b4664e9c58ff88d99a07c351ae9"
+    }
+  ],
+  "input_row_count": 65201,
+  "missing_session_count": 1,
+  "missing_values": {
+    "close": 0,
+    "date": 1,
+    "high": 0,
+    "low": 0,
+    "open": 0,
+    "source": 0,
+    "symbol": 1,
+    "volume": 0
+  },
+  "output_location": "data/processed/equity_prices",
+  "packages": {
+    "duckdb": "1.5.6",
+    "polars": "1.44.2",
+    "pyarrow": "24.0.0",
+    "pydantic": "2.14.1",
+    "research-data-engine": "0.1.0"
+  },
+  "processing_duration_seconds": 0.5099578329973156,
+  "python": "3.12.15",
+  "quarantined_row_count": 7,
+  "rejected_categories": [],
+  "sources": [
+    "synthetic_weekdays"
+  ],
+  "status": "published",
+  "valid_row_count": 65194,
+  "warning_counts": {
+    "extreme_return": 2,
+    "missing_expected_sessions": 1,
+    "volume_change": 2
+  }
+}

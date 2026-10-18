@@ -145,8 +145,23 @@ Expected: two-symbol synthetic price-return slice, an optimized Polars Parquet p
 
 ## F. Honest limitations and preparation
 
-Implemented: CLI/API, deterministic generation, normalization, validation/rejection/quarantine, trailing analytics, snapshots/reports, DuckDB SQL, tests, scoped measured benchmarks, and CI workflow configuration. The hosted CI workflow has not run until this repository is pushed to GitHub.
+Implemented: CLI/API, deterministic generation, normalization, validation/rejection/quarantine, trailing analytics, snapshots/reports, DuckDB SQL, tests, scoped measured benchmarks, and an interactive static walkthrough. A GitHub Actions workflow is configured for pushes and pull requests; inspect the repository's Actions page for actual hosted run results.
 
 Not implemented: live feeds, real exchange calendars, corporate actions/total returns, stable security IDs, point-in-time fundamentals, revision-aware backtesting, concurrent-writer coordination, automatic snapshot retention, cloud storage, production orchestration, or a hostile-SQL resource sandbox. Validation materializes data in memory. Atomic visibility is not a power-loss durability guarantee. The optional 5M benchmark is unexecuted.
 
 Recommended rehearsal: run the exact commands in order; inspect one rejection/quarantine test and the independent volatility reference; explain why date filtering must preserve lag context; read the 1M report's CPU/RSS columns as well as speedups. If a feature is only in the roadmap, say so.
+
+## G. Manager-facing visual walkthrough
+
+From the repository root:
+
+```bash
+node frontend/build.mjs
+python3 -m http.server 4173 --bind 127.0.0.1 --directory frontend/dist
+```
+
+Open **http://127.0.0.1:4173**. The page follows input, normalization, validation, financial analytics, snapshot publication, SQL access, measured performance, and verification. Use the step navigation to keep the presentation focused.
+
+Inspect both duplicate records, compare quarantine/rejection behavior, edit the two-price return illustration, explore actual retained price/volatility histories, and switch the benchmark between wall time and process RSS. Each step links to implementation code. The SQL panels show recorded outputs from the actual engine; the browser does not execute new Python processing or SQL. The print button produces a shareable PDF through the browser.
+
+The included evidence is synthetic and exported from a real local pipeline run. A registered Sites project is owner-private; deployment and viewer access require their applicable approval/access settings. The local presentation is independent of hosting. See [frontend instructions](../frontend/README.md) to refresh evidence and run the frontend checks.

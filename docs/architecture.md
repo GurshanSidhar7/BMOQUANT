@@ -20,6 +20,12 @@ flowchart LR
 
 `ingest()` in `pipeline.py` composes these steps. There is no scheduler, network data dependency, server, or separate database service. The CLI and public Python API share the same implementations.
 
+## Interactive presentation
+
+`frontend/` is a single-page static walkthrough of the implemented pipeline. `scripts/export_walkthrough.py` runs the real engine against a fresh deterministic synthetic dataset in a temporary directory, then exports raw/canonical record comparisons, quarantine decisions, retained price histories, DuckDB answers, source snippets, and byte-identical measured benchmark reports. The export does not alter a user's existing datasets.
+
+The browser explores those recorded outputs and offers a labelled two-price mathematical example and conceptual publication replay. It does not execute Python ETL, upload CSVs, or run arbitrary SQL. This keeps one authoritative implementation of financial validation and analytics. An optional supplied pytest JUnit report certifies the displayed Python test result; a failing or empty report blocks certification/export. Paths are made portable and raw non-finite values are represented as strings in strict JSON. [Frontend instructions](../frontend/README.md) document build, refresh, downloads, and browser verification.
+
 ## Modules
 
 | Module | Responsibility |

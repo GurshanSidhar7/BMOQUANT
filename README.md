@@ -20,6 +20,18 @@ Research datasets often arrive with inconsistent column names, mixed text/numeri
 - Direct Parquet SQL through DuckDB, parameterized date/symbol filtering, Polars results, and a public Python API.
 - Correctness-gated pandas/Polars/DuckDB benchmarks with isolated workers, wall/CPU timing, sampled native-process RSS, and measured reports.
 - Installable Typer CLI, focused pytest tests, Ruff, GitHub Actions, SQL/Python examples, and an interview walkthrough.
+- A single-page interactive frontend tracing actual pipeline outputs, validation decisions, financial mathematics, SQL results, measured performance, and implementation boundaries.
+
+## Interactive walkthrough
+
+The manager-facing frontend presents the complete pipeline as eight inspectable steps. It includes record provenance, quarantine/rejection previews, editable return examples, actual price/volatility charts, recorded DuckDB answers, and measured time/memory comparisons.
+
+```bash
+node frontend/build.mjs
+python3 -m http.server 4173 --bind 127.0.0.1 --directory frontend/dist
+```
+
+Open **http://127.0.0.1:4173**. The frontend has no JavaScript runtime dependencies. Its included evidence was exported from the real Python engine; it does not execute new pipeline runs or SQL in the browser. [Frontend instructions](frontend/README.md) explain refresh, verification, downloads, and hosting.
 
 ## Architecture
 
@@ -150,7 +162,7 @@ Faster elapsed time did not always mean lower memory: at 1M rows, the sampled CS
 
 Tests cover malformed/missing input, schema mapping/casting, duplicate/source semantics, financial invariants, warning retention, independent financial references, insufficient history, ordering, future-data independence, Parquet types, idempotency, publication rollback, query restrictions, date filters, CLI demo, and benchmark correctness/reporting. GitHub Actions installs locked dependencies, runs Ruff/formatting and pytest, then executes help and an isolated demo. The workflow is provided; hosted CI requires pushing the repository to GitHub.
 
-Local verification on October 18, 2026: **71 pytest tests passed**, Ruff lint and format checks passed, source/wheel distributions built, and a wheel installed in a fresh virtual environment outside this checkout completed help, demo, validation, and SQL checks. The standalone generator and all three SQL examples also executed successfully.
+Local verification on October 18, 2026: **74 pytest tests passed**, including evidence-export checks; six JavaScript unit tests and desktop/mobile browser interaction checks passed. Ruff lint and format checks passed. Source/wheel distributions built, and a wheel installed in a fresh virtual environment outside this checkout completed help, demo, validation, and SQL checks. The standalone generator and all three SQL examples also executed successfully.
 
 ```text
 .
@@ -165,6 +177,7 @@ Local verification on October 18, 2026: **71 pytest tests passed**, Ruff lint an
 ├── tests/                       # focused pytest fixtures and test modules
 ├── scripts/generate_sample_data.py
 ├── examples/                    # three SQL files and research_example.py
+├── frontend/                    # single-page walkthrough and exported Python evidence
 ├── benchmarks/results/          # measured 100k / 1M JSON and Markdown
 ├── data/                        # generated locally; ignored by Git
 └── docs/
