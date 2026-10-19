@@ -1,10 +1,10 @@
 # Explaining Research Data Engine
 
-This is an independent portfolio project by Gurshan Sidhar. The bundled prices are synthetic. Describe the work you understand and can demonstrate; BMO did not commission or endorse it.
+This is an independent portfolio project by Gurshan Sidhar. The walkthrough uses ten synthetic stocks; the workspace also has real 2025 NVIDIA, SanDisk, and WTI spot-price snapshots with attribution. Describe the work you understand and can demonstrate; BMO did not commission or endorse it.
 
 ## Start with the problem
 
-“I wanted to reduce the repeated cleaning that happens before a stock-price analysis. This project reads price CSVs, checks their records, calculates a few standard measures, and saves a clean file that another script can use. It also keeps a separate file of unusable records with the reasons. I used synthetic data to make the example repeatable.”
+“I wanted to reduce the repeated cleaning that happens before a stock-price analysis. This project reads price CSVs, checks their records, calculates a few standard measures, and saves a clean file that another script can use. It also keeps a separate file of unusable records with the reasons. I use ten synthetic stocks to test known failures, plus three frozen real histories to demonstrate external-data preparation.”
 
 That is the central project. Performance measurements and publication safeguards support it; they do not need to lead the explanation.
 
@@ -34,7 +34,7 @@ A **warning** means a record deserves review: a large price move, a large volume
 
 **Quarantine** means saving offending rows separately with reasons. Configuration can instead reject the whole run. Missing required values reject by default; the demonstration explicitly uses quarantine so all example errors can be inspected.
 
-The demo contains **65,201 input rows = 65,194 retained rows + 7 quarantined rows**. Some rows fail more than one check, so reason counts can exceed seven.
+The demo contains **13,041 input rows = 13,034 retained rows + 7 quarantined rows**. Some rows fail more than one check, so reason counts can exceed seven.
 
 Implementation: `validation.py`. It checks the input, calculates analytics once on retained rows, and adds warnings. If the arithmetic exceeds the supported numeric range, it stops for input review. It does not repeatedly remove observations to repair a calculation.
 
@@ -48,7 +48,7 @@ The retained rows are sorted by stock, source, and date. Each source stays separ
 
 The precise volatility definition is sample standard deviation (`ddof=1`) of 20 trailing log returns × √252. Log return is ln(current close) − ln(previous close). The library also provides a 30-return window and close × volume as an approximate dollar-volume measure.
 
-These are unadjusted price measures. Splits and dividends are not handled. None is a prediction, trading strategy, or proof of investment value.
+The generated examples are unadjusted. Real equity samples use provider OHLC as supplied; the adjusted-close field is not used, and this project makes no additional corporate-action adjustment. WTI is a spot assessment, not a total-return investment. Splits and dividends are not independently handled. None is a prediction, trading strategy, or proof of investment value.
 
 Implementation: `analytics.py`. Calculations use current and earlier observations. Date selections read the stored results, preserving pre-start history.
 
@@ -72,12 +72,12 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory frontend/dist
 ```
 
 1. Open `http://127.0.0.1:4173/`. The **How it works** page explains the five steps on one page. Show the seven set-aside records in the row accounting and try the two-price return example.
-2. Open **Research workspace**. The task is: “I need a clean stock-price history for a research notebook.” Select a stock and dates, apply the selection, and review the summary and chart.
+2. Open **Research workspace**. The task is: “I need a clean stock-price history for a research notebook.” Start with NVIDIA and July–December 2025, apply the selection, and review the source, summary, and chart. Compare SanDisk and WTI; WTI is USD per barrel and has no volume.
 3. Switch to recent volatility. Explain that the first displayed date can have a value because Python calculated it with earlier history before the date filter.
 4. Download the selected CSV. It includes every retained row in the selection, not only the table's current page.
-5. Select `SYN0000`, January–February 2021, to review warning flags. Inspect both duplicate records in the quarantine table (source rows 12 and 65,202).
+5. Select `SYN0000`, January–February 2021, to review warning flags. Inspect both duplicate records in the quarantine table (source rows 12 and 13,042).
 
-Be precise about execution: Python prepared these outputs offline. The website filters and exports them locally in the browser. It does not run a new ingestion job, accept uploads, or connect to live markets. All 50 synthetic stocks have downloadable histories.
+Be precise about execution: Python prepared these outputs offline. The website filters and exports them locally in the browser. It does not run a new ingestion job, accept uploads, or connect to live markets. All ten synthetic stocks and three real samples have downloadable histories. WTI uses the same price calculations under a price-only adapter; missing OHLC/volume stay blank. Quality reports switch with the source dataset. The real window is February 24–December 31, 2025; no pre-listing SanDisk history is invented.
 
 The workspace's **price change** compares its first and last selected closes; it differs from a row's return against the previous retained observation. Its **average daily volume** averages the selected observations; it differs from the library's trailing 20-observation average. Its **recent volatility** is the stored 20-return value on the latest selected row.
 
@@ -95,7 +95,7 @@ The workspace's **price change** compares its first and last selected closes; it
 
 **How did you check the maths?** Tests compare returns and rolling volatility against independent NumPy references, check short histories and source boundaries, and verify that adding future rows does not change earlier results.
 
-**What is the main limitation?** These are synthetic, unadjusted prices. Real research would first need suitable licensed inputs, stable identifiers, corporate-action handling, and exchange calendars. The current gap check only knows weekdays.
+**What is the main limitation?** The real examples are a small frozen sample, not a live or production-validated feed. Broader research would need suitable data rights, stable identifiers, corporate-action handling, and exchange calendars. The current gap check only knows weekdays.
 
 **What about the speed claims?** A separate exercise measured matched 100k and 1M synthetic workloads after checking complete result agreement. Results vary by workload and machine; faster wall time did not always mean lower memory. Show `benchmarks/results/` if asked. The 5M case was not executed. These measurements do not establish end-to-end production throughput.
 

@@ -14,7 +14,7 @@ if (
 const securities = evidence.workspace.securities;
 if (
   securities.reduce((total, security) => total + security.rows, 0) !==
-  evidence.report.valid_row_count
+  evidence.workspace.retained_rows
 ) {
   throw new Error("Workspace histories do not reconcile with retained rows.");
 }
@@ -49,5 +49,5 @@ cpSync(new URL("./assets/", import.meta.url), new URL("assets/", destination), {
   recursive: true,
 });
 console.log(
-  `Built static walkthrough with ${evidence.report.valid_row_count.toLocaleString()} real Python-validated synthetic observations.`,
+  `Built workspace: ${evidence.workspace.synthetic_count} synthetic instruments, ${evidence.workspace.real_count} real historical instruments, ${evidence.workspace.retained_rows.toLocaleString()} retained rows.`,
 );

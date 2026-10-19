@@ -1,0 +1,80 @@
+{
+  "calendar": "none",
+  "config": {
+    "dataset": "real_equities",
+    "input": {
+      "date_format": "%Y-%m-%d",
+      "format": "csv",
+      "path": "data/market-input/equities",
+      "source": "yahoo_finance"
+    },
+    "output": {
+      "format": "parquet",
+      "path": "data/processed/real_equities"
+    },
+    "schema": {
+      "close": "close",
+      "date": "date",
+      "high": "high",
+      "low": "low",
+      "open": "open",
+      "symbol": "symbol",
+      "volume": "volume"
+    },
+    "validation": {
+      "calendar": "none",
+      "duplicate_policy": "reject",
+      "extreme_return_threshold": 0.25,
+      "invalid_price_policy": "reject",
+      "malformed_value_policy": "reject",
+      "missing_value_policy": "reject",
+      "stale_price_window": 5,
+      "volume_change_ratio": 10.0
+    }
+  },
+  "dataset": "real_equities",
+  "duration_scope": "scan, fingerprint, materialization, validation, analytics; excludes publication",
+  "errors_by_category": {},
+  "execution_timestamp": "2026-10-19T14:54:57.351063+00:00",
+  "input_file_count": 2,
+  "input_files": [
+    {
+      "path": "data/market-input/equities/NVDA.csv",
+      "sha256": "47d27711d883d2aa54c354ab57fcc2a27e07bb6b81ae580e65cd1c9f7a03daee"
+    },
+    {
+      "path": "data/market-input/equities/SNDK.csv",
+      "sha256": "c409f8a6ff961a46de936040f4e4f5392bd3544137455ee3b72067aaa32bb9cc"
+    }
+  ],
+  "input_row_count": 432,
+  "missing_session_count": 0,
+  "missing_values": {
+    "close": 0,
+    "date": 0,
+    "high": 0,
+    "low": 0,
+    "open": 0,
+    "source": 0,
+    "symbol": 0,
+    "volume": 0
+  },
+  "output_location": "data/processed/real_equities",
+  "packages": {
+    "duckdb": "1.5.6",
+    "polars": "1.44.2",
+    "pyarrow": "24.0.0",
+    "pydantic": "2.14.1",
+    "research-data-engine": "0.1.0"
+  },
+  "processing_duration_seconds": 0.017286208996665664,
+  "python": "3.12.15",
+  "quarantined_row_count": 0,
+  "rejected_categories": [],
+  "sources": [
+    "yahoo_finance"
+  ],
+  "status": "published",
+  "valid_row_count": 432,
+  "warning_counts": {}
+}

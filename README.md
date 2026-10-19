@@ -4,7 +4,7 @@
 
 Read a price CSV, make its fields consistent, check the records, calculate basic measures, and save a reusable dataset. Polars handles preparation; DuckDB provides optional SQL access to the saved Parquet files.
 
-This is an **independent portfolio project**. BMO did not commission this software; no BMO use or endorsement is implied. All bundled demonstrations and benchmarks use **synthetic** unadjusted prices, not real market data.
+This is an **independent portfolio project**. BMO did not commission this software; no BMO use or endorsement is implied. The walkthrough and benchmarks use **synthetic** prices. The research workspace separately includes frozen **real NVIDIA, SanDisk, and WTI Cushing spot-price samples** with provider attribution and observed date ranges.
 
 ## Why it exists
 
@@ -24,7 +24,7 @@ Research datasets often arrive with inconsistent column names, mixed text/numeri
 
 ## Interactive walkthrough
 
-**How it works** explains the five steps on one page, with definitions, examples, and actual row accounting. **Research workspace** shows a practical task: choose a stock and dates, inspect a cleaned price history and data-quality flags, then export the selected observations. All 50 synthetic stocks are available; histories load one at a time. Supporting tests and benchmark evidence remain available without leading the presentation.
+**How it works** explains the five steps on one page, with definitions, examples, and actual row accounting. **Research workspace** shows a practical task: choose a stock and dates, inspect a cleaned price history and data-quality flags, then export the selected observations. The selector includes 10 synthetic stocks and three real historical samples: NVIDIA (`NVDA`), SanDisk (`SNDK`), and WTI Cushing spot. Histories load one at a time. WTI is USD per barrel and has no supplied OHLC or trading volume. Supporting tests and benchmark evidence remain available without leading the presentation.
 
 ```bash
 node frontend/build.mjs
@@ -66,9 +66,23 @@ uv run ruff check .
 uv run ruff format --check .
 ```
 
-The demo needs no API keys or external service after dependency installation. It generates 50 synthetic securities for 2021–2025 using a **weekday approximation**, deliberately injects defects, publishes valid data, and runs a DuckDB summary. Expected accounting: **65,201 input rows → 65,194 valid rows + 7 quarantined rows**. Extreme price/volume movements remain warning flags. Reports and quarantine paths print in the terminal.
+The demo needs no API keys or external service after dependency installation. It generates 10 synthetic securities for 2021–2025 using a **weekday approximation**, deliberately injects defects, publishes valid data, and runs a DuckDB summary. Expected accounting: **13,041 input rows → 13,034 valid rows + 7 quarantined rows**. Extreme price/volume movements remain warning flags. Reports and quarantine paths print in the terminal.
 
 If the environment is already installed, `.venv/bin/research-data demo` runs directly on macOS/Linux. Use `--directory /tmp/research-data-demo` to isolate demo artifacts; pass that directory's `processed/equity_prices` path to subsequent query/validate commands.
+
+## Real historical samples
+
+Checked-in examples cover **February 24–December 31, 2025**: 216 daily observations each for NVIDIA and SanDisk from Yahoo Finance, and 214 daily WTI Cushing spot assessments from the U.S. Energy Information Administration. The window starts with SanDisk's current independent listing, avoiding its earlier, unrelated ticker history. These are frozen samples rather than live quotes.
+
+Run the two equity files through the existing strict OHLCV pipeline:
+
+```bash
+uv run research-data ingest --config configs/real_equities.yaml
+```
+
+WTI uses an explicit price-only adapter and the same return/volatility mathematics. It supplies neither OHLC ranges nor trading volume; unavailable fields remain blank in the workspace's common CSV export. It is a spot assessment in USD/barrel, not an oil stock, ETF, futures contract, or futures total-return series. The adapter supports the positive-price 2025 sample; signed commodity prices need a different return contract. All real samples disable the approximate weekday-gap warning so holidays are not mistaken for errors.
+
+The [source manifest](examples/market_data/manifest.json) records provider URLs, retrieval times, units, row counts, and SHA-256 hashes. Input and response fingerprints are recorded. Tests and exports use the frozen files without network access. See [sample notes and refresh instructions](examples/market_data/README.md).
 
 ## CLI examples
 
@@ -138,7 +152,7 @@ with QueryEngine() as engine:
 # run = ingest("configs/prices.yaml")
 ```
 
-`simple_return = close / prior_retained_close - 1`; `log_return = ln(close) - ln(prior_retained_close)`. Realized volatility uses **sample standard deviation**, 252-session annualization, and a full trailing 20/30 log-return window (21/31 prices). Windows include current and prior observed rows. The API filters already-computed analytics so the requested start date retains historical context. Returns spanning missing observations span the gap; they are not necessarily one-session returns. Prices are **not adjusted for splits or dividends**, so these are price returns, not total shareholder returns.
+`simple_return = close / prior_retained_close - 1`; `log_return = ln(close) - ln(prior_retained_close)`. Realized volatility uses **sample standard deviation**, 252-session annualization, and a full trailing 20/30 log-return window (21/31 prices). Windows include current and prior observed rows. The API filters already-computed analytics so the requested start date retains historical context. Returns spanning missing observations span the gap; they are not necessarily one-session returns. The engine **does not apply its own split or dividend adjustments**. Provider-supplied price conventions are retained; these calculations are price returns rather than total shareholder returns.
 
 Run `uv run python examples/research_example.py` for a complete API example and the actual optimized Polars scan plan showing date-predicate and column-projection pushdown. [The data contract](docs/data_contract.md) specifies window, source, and provenance semantics.
 
@@ -164,7 +178,7 @@ Faster elapsed time did not always mean lower memory: at 1M rows, the sampled CS
 
 Tests cover malformed/missing input, schema mapping/casting, duplicate/source semantics, financial invariants, warning retention, independent financial references, insufficient history, ordering, future-data independence, Parquet types, idempotency, publication rollback, query restrictions, date filters, CLI demo, and benchmark correctness/reporting. GitHub Actions installs locked dependencies, runs Ruff/formatting and pytest, then executes help and an isolated demo. The workflow is provided; hosted CI requires pushing the repository to GitHub.
 
-Local verification on October 18, 2026: **77 pytest tests passed**, including evidence-export and numeric-range failure checks; eight JavaScript unit tests and desktop/mobile browser interaction checks passed. Browser checks verified full-selection CSV contents, historical context, date-range errors, empty results, quality inspectors, keyboard charts, and PDF output. Ruff lint and format checks passed. Check GitHub Actions for actual hosted run results.
+Local verification on October 19, 2026: **87 pytest tests passed**, including evidence-export and numeric-range failure checks; nine JavaScript unit tests and desktop/mobile browser interaction checks passed. Browser checks verified full-selection CSV contents, historical context, date-range errors, empty results, real/synthetic source labels, missing WTI fields, quality inspectors, keyboard charts, and PDF output. Ruff lint and format checks passed. Check GitHub Actions for actual hosted run results.
 
 ```text
 .

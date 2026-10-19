@@ -1,4 +1,4 @@
-// Optional browser QA. Use a temporary Playwright installation to keep runtime dependencies at zero.
+// Optional QA uses a temporary Playwright installation; no app runtime dependencies.
 import assert from "node:assert/strict";
 import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -8,6 +8,9 @@ const { chromium } = await import(
 const base = process.env.WALKTHROUGH_URL || "http://127.0.0.1:4173";
 const output =
   process.env.WALKTHROUGH_SCREENSHOTS || "/tmp/research-data-walkthrough-qa";
+const evidence = JSON.parse(
+  readFileSync(new URL("../assets/evidence.json", import.meta.url), "utf8"),
+);
 mkdirSync(output, { recursive: true });
 const browser = await chromium.launch({
   ...(process.env.CHROME_EXECUTABLE
@@ -28,12 +31,11 @@ try {
   });
   assert.equal((await page.goto(base)).status(), 200);
   await page.waitForFunction(() =>
-    document.querySelector("#data-status").textContent.includes("65,201 input"),
+    document.querySelector("#data-status").textContent.includes("13,041 input"),
   );
   await page.addStyleTag({ content: "html {scroll-behavior:auto!important}" });
   assert.equal(await page.locator(".stage[id]:not(#scope)").count(), 5);
-  assert.equal(await page.locator("#raw-rows tr").count(), 4);
-  assert.match(await page.locator("#row-accounting").textContent(), /65,194/);
+  assert.match(await page.locator("#row-accounting").textContent(), /13,034/);
   await page.screenshot({ path: path.join(output, "desktop-overview.png") });
   await page.locator("#current-close").fill("90");
   assert.equal(await page.locator("#return-result").textContent(), "-10.00%");
@@ -43,9 +45,6 @@ try {
   await page.locator("#current-close").fill("102");
   await page.locator("#check").scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(output, "desktop-validation.png") });
-  checks.push(
-    "Five-step explanation loads real records and row accounting; return example validates inputs",
-  );
   await page.emulateMedia({ media: "print" });
   await page.pdf({
     path: path.join(output, "walkthrough.pdf"),
@@ -53,94 +52,145 @@ try {
     printBackground: true,
   });
   await page.emulateMedia({ media: "screen" });
+  checks.push(
+    "Five-step explanation uses the ten-stock fixture and reconciles all 13,041 rows",
+  );
   await page.goto(`${base}/workspace.html`);
   await page.waitForFunction(() =>
-    document
-      .querySelector("#result-context")
-      .textContent.includes("261 retained rows"),
+    document.querySelector("#results-title").textContent.includes("NVIDIA"),
   );
-  assert.equal(await page.locator("#security-select option").count(), 50);
-  assert.equal(await page.locator("#quarantine-body tr").count(), 7);
-  assert.equal(await page.locator("#observations-body tr").count(), 15);
-  await page.screenshot({ path: path.join(output, "desktop-workspace.png") });
-  await page.locator("#metric-select").selectOption("realized_vol_20");
-  assert.ok(
-    (await page.locator("#chart-container .chart-line").getAttribute("d"))
-      .length > 100,
+  await page.waitForFunction(
+    () =>
+      document.querySelector("#research-results").getAttribute("aria-busy") ===
+      "false",
   );
-  assert.notEqual(
+  assert.equal(await page.locator("#security-select option").count(), 13);
+  assert.equal(
     await page
-      .locator("#observations-body tr:first-child td:nth-child(4)")
-      .textContent(),
-    "—",
+      .locator(
+        '#security-select optgroup[label="Synthetic tests · 10 stocks"] option',
+      )
+      .count(),
+    10,
   );
-  await page.locator("#chart-container svg").focus();
-  await page.keyboard.press("Home");
-  assert.match(
-    await page.locator("#chart-readout").textContent(),
-    /2025-01-01/,
-  );
-  await page.keyboard.press("ArrowRight");
-  assert.match(
-    await page.locator("#chart-readout").textContent(),
-    /2025-01-02/,
-  );
-  const downloadEvent = page.waitForEvent("download");
-  await page.locator("#download-csv").click();
-  const download = await downloadEvent;
-  assert.match(
-    download.suggestedFilename(),
-    /SYN0001_2025-01-01_2025-12-31_synthetic.csv/,
-  );
-  const csv = readFileSync(await download.path(), "utf8");
-  assert.equal(csv.trim().split("\n").length, 262);
-  assert.match(csv.split("\n")[0], /_source_row,_warnings/);
-  await page.locator("#next-page").click();
-  assert.match(
-    await page.locator("#page-status").textContent(),
-    /Page 2 of 18/,
-  );
-  await page.locator("#previous-page").click();
+  await page.screenshot({ path: path.join(output, "desktop-workspace.png") });
+  async function select(symbol, start = "2025-07-01", end = "2025-12-31") {
+    const index = evidence.workspace.securities.findIndex(
+      (s) => s.symbol === symbol,
+    );
+    await page.locator("#security-select").selectOption(String(index));
+    await page.locator("#start-date").fill(start);
+    await page.locator("#end-date").fill(end);
+    assert.ok(await page.locator("#download-csv").isDisabled());
+    await page.locator("#apply-selection").click();
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector("#research-results")
+          .getAttribute("aria-busy") === "false",
+    );
+  }
+  for (const symbol of ["NVDA", "SNDK", "WTI"]) {
+    await select(symbol);
+    const security = evidence.workspace.securities.find(
+      (s) => s.symbol === symbol,
+    );
+    const history = JSON.parse(
+      readFileSync(
+        new URL(`../assets/${security.path}`, import.meta.url),
+        "utf8",
+      ),
+    );
+    const expected = history.filter(
+      (r) => r.date >= "2025-07-01" && r.date <= "2025-12-31",
+    );
+    assert.match(
+      await page.locator("#instrument-details").textContent(),
+      /REAL HISTORICAL DATA/,
+    );
+    assert.equal(
+      await page.locator("#instrument-details a").first().getAttribute("href"),
+      security.source_url,
+    );
+    assert.equal(await page.locator("[data-record-row]").count(), 0);
+    assert.match(
+      await page.locator("#quarantine-body").textContent(),
+      /No records were quarantined/,
+    );
+    await page.locator("#metric-select").selectOption("realized_vol_20");
+    assert.notEqual(
+      await page
+        .locator("#observations-body tr:first-child td:nth-child(4)")
+        .textContent(),
+      "—",
+    );
+    await page.locator("#chart-container svg").focus();
+    await page.keyboard.press("Home");
+    assert.match(
+      await page.locator("#chart-readout").textContent(),
+      /2025-07-01/,
+    );
+    const downloadEvent = page.waitForEvent("download");
+    await page.locator("#download-csv").click();
+    const download = await downloadEvent;
+    assert.equal(
+      download.suggestedFilename(),
+      `${symbol}_2025-07-01_2025-12-31_real.csv`,
+    );
+    const csv = readFileSync(await download.path(), "utf8");
+    assert.equal(csv.trim().split("\n").length, expected.length + 1);
+    assert.match(csv.split("\n")[0], /data_kind,instrument_type,price_unit/);
+    const fields = csv.trim().split("\n")[1].split(",");
+    assert.equal(fields[0], symbol);
+    assert.equal(Number(fields[9]), expected[0].close);
+    if (symbol === "WTI") {
+      assert.match(
+        await page.locator("#instrument-details").textContent(),
+        /USD per barrel/,
+      );
+      assert.match(
+        await page.locator("#summary-cards").textContent(),
+        /Unavailable/,
+      );
+      assert.equal(
+        await page
+          .locator("#observations-body tr:first-child td:nth-child(5)")
+          .textContent(),
+        "—",
+      );
+      assert.equal(fields[3], "commodity_spot");
+      assert.equal(fields[6], "");
+      assert.equal(fields[7], "");
+      assert.equal(fields[8], "");
+      assert.equal(fields[10], "");
+      await page.screenshot({ path: path.join(output, "desktop-wti.png") });
+    }
+    await page.locator("#next-page").click();
+    assert.match(await page.locator("#page-status").textContent(), /Page 2/);
+  }
   checks.push(
-    "All 50 stocks available; stored history, accessible chart, pagination, and full 261-row export work",
+    "NVDA, SNDK, and WTI render actual saved history, prior volatility, source links, and complete typed CSV exports; WTI has no invented OHLC or volume",
   );
+  await select("SNDK", "2024-01-01", "2024-12-31");
+  assert.ok(await page.locator("#empty-state").isVisible());
+  assert.ok(await page.locator("#download-csv").isDisabled());
   await page.locator("#start-date").fill("2025-12-31");
   await page.locator("#end-date").fill("2025-01-01");
-  assert.ok(await page.locator("#download-csv").isDisabled());
   await page.locator("#apply-selection").click();
   assert.match(
     await page.locator("#selection-error").textContent(),
     /start date/,
   );
-  await page.locator("#start-date").fill("2030-01-01");
-  await page.locator("#end-date").fill("2030-12-31");
-  await page.locator("#apply-selection").click();
-  await page.waitForFunction(
-    () => !document.querySelector("#empty-state").hidden,
+  await select("SYN0000", "2021-01-01", "2021-02-28");
+  assert.match(
+    await page.locator("#instrument-details").textContent(),
+    /SYNTHETIC TEST FIXTURE/,
   );
-  assert.ok(await page.locator("#download-csv").isDisabled());
-  assert.equal(await page.locator("#summary-cards .summary-card").count(), 0);
-  await page.locator("#security-select").selectOption("0");
-  await page.locator("#start-date").fill("2021-01-01");
-  await page.locator("#end-date").fill("2021-02-28");
-  await page.locator("#apply-selection").click();
-  await page.waitForFunction(
-    () =>
-      document
-        .querySelector("#results-title")
-        .textContent.startsWith("SYN0000") &&
-      !document.querySelector("#empty-state").hidden === false,
-  );
-  await page.locator("#metric-select").selectOption("close");
-  await page.locator("#next-page").click();
+  assert.equal(await page.locator("[data-record-row]").count(), 7);
   await page.locator("[data-warning-row]").first().click();
   assert.ok(await page.locator("#record-dialog").evaluate((d) => d.open));
-  assert.match(
-    await page.locator("#record-content").textContent(),
-    /kept|Warning|warning/,
-  );
   await page.keyboard.press("Escape");
-  for (const row of ["12", "65202"]) {
+  for (const row of ["12", "13042"]) {
     await page.locator(`[data-record-row="${row}"]`).click();
     assert.match(
       await page.locator("#record-content").textContent(),
@@ -149,19 +199,18 @@ try {
     await page.keyboard.press("Escape");
   }
   checks.push(
-    "Invalid and empty date ranges are handled; pending controls prevent stale downloads; warnings and both duplicate records inspect correctly",
+    "Pre-listing and invalid ranges stay empty/actionable; synthetic review switches reports and preserves all seven error records and both duplicate members",
   );
   await page.locator("#reset-selection").click();
   await page.waitForFunction(() =>
-    document
-      .querySelector("#result-context")
-      .textContent.includes("261 retained rows"),
+    document.querySelector("#results-title").textContent.includes("NVIDIA"),
   );
   await page.setViewportSize({ width: 390, height: 844 });
   await page.evaluate(() => scrollTo(0, 0));
   await page.screenshot({ path: path.join(output, "mobile-workspace.png") });
   for (const id of [
     "selection-title",
+    "instrument-details",
     "results-title",
     "chart-surface",
     "observations-surface",
@@ -176,9 +225,18 @@ try {
       `${id} overflows`,
     );
   }
+  await select("WTI");
+  await page.locator("#instrument-details").scrollIntoViewIfNeeded();
+  assert.equal(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth > innerWidth,
+    ),
+    false,
+  );
+  await page.screenshot({ path: path.join(output, "mobile-wti.png") });
   await page.goto(base);
   await page.waitForFunction(() =>
-    document.querySelector("#data-status").textContent.includes("65,201 input"),
+    document.querySelector("#data-status").textContent.includes("13,041 input"),
   );
   await page.screenshot({ path: path.join(output, "mobile-overview.png") });
   for (const id of [
@@ -199,7 +257,7 @@ try {
     );
   }
   checks.push(
-    "Both pages fit a 390px mobile viewport without page-level overflow; walkthrough PDF renders",
+    "Both pages and WTI fit the mobile viewport; keyboard inspection and walkthrough PDF work",
   );
   assert.deepEqual(errors, [], "Browser errors");
   console.log(

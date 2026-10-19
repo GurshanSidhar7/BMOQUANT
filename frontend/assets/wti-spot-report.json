@@ -1,0 +1,15 @@
+{
+  "calendar": "none",
+  "contract": "Positive daily spot prices. OHLC and trading volume are not supplied.",
+  "data_kind": "real",
+  "dataset": "wti_spot",
+  "errors_by_category": {},
+  "input_row_count": 214,
+  "quarantined_row_count": 0,
+  "source": "U.S. Energy Information Administration",
+  "status": "validated",
+  "valid_row_count": 214,
+  "warning_counts": {
+    "extreme_return": 0
+  }
+}

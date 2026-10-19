@@ -1,6 +1,6 @@
 # Engineering decisions
 
-This document describes the implemented MVP and explicitly separates future work. It is an independent portfolio project built around synthetic examples, not software commissioned or endorsed by an asset manager.
+This document describes the implemented MVP and explicitly separates future work. It is an independent portfolio project using synthetic tests and a small frozen real-data example, not software commissioned or endorsed by an asset manager.
 
 ## 1. Polars for normalization and financial transformations
 
@@ -36,7 +36,7 @@ All members of a duplicate key group are quarantined instead of choosing an arbi
 
 The pipeline publishes immutable snapshots using one atomic manifest replacement. Existing readers keep their resolved file. Repeat ingestion replaces the active logical dataset rather than appending duplicates. Retention uses disk space and needs a future pruning policy. The supported publication model is a single writer on a local filesystem, not a distributed transaction. [Architecture](architecture.md) documents filesystem and crash-durability limits.
 
-Seeded synthetic data makes the project usable without API keys, licensing dependencies, or unreliable live endpoints. A weekday approximation keeps the MVP small but cannot identify real exchange holidays. No live performance claim, alpha result, or investment conclusion is drawn from the synthetic prices.
+Seeded synthetic data makes the project usable without API keys, licensing dependencies, or unreliable live endpoints. A weekday approximation keeps the MVP small but cannot identify real exchange holidays. The workspace also provides three attributed 2025 snapshots: NVIDIA and SanDisk OHLCV from Yahoo Finance, plus EIA WTI Cushing spot prices. Tests and site builds use local snapshots; downloading is a separate explicit refresh step. WTI shares the price mathematics but uses a price-only contract because it has no OHLC or volume. No live performance claim, alpha result, or investment conclusion is drawn from these examples.
 
 ## What changes in a larger institutional environment? (Not implemented)
 

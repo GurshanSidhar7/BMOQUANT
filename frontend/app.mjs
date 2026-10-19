@@ -4,7 +4,7 @@ import { $, integer, escapeHTML, percent, fetchJSON } from "./view.mjs";
 function render(evidence) {
   const { report } = evidence;
   $("#data-status").textContent =
-    `Recorded Python run · ${integer(report.input_row_count)} input records · 50 synthetic stocks · 2021–2025 · prepared ${evidence.generated_at.slice(0, 10)}`;
+    `Synthetic walkthrough · ${integer(report.input_row_count)} input records · ${evidence.workspace.synthetic_count} generated stocks · 2021–2025 · real NVIDIA, SanDisk and WTI samples available in the workspace`;
   const rawRows = [
     ...evidence.records.slice(0, 3),
     evidence.records.find((r) => r.row === 8),

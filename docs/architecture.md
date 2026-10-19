@@ -1,6 +1,6 @@
 # Architecture and execution boundaries
 
-Research Data Engine is an independent local research utility. The bundled data is **synthetic**; no employer affiliation or endorsement is implied.
+Research Data Engine is an independent local research utility. The walkthrough uses **10 synthetic stocks**, and the workspace adds **three frozen real historical samples**; no employer affiliation or endorsement is implied.
 
 ```mermaid
 flowchart LR
@@ -22,7 +22,7 @@ flowchart LR
 
 ## Interactive presentation
 
-`frontend/` contains two static pages: a five-step plain-language explanation and a research workspace. `scripts/export_walkthrough.py` runs the real engine against a fresh deterministic synthetic dataset in a temporary directory, then exports raw/canonical record comparisons, quarantine decisions, retained price histories, DuckDB answers, source snippets, and byte-identical measured benchmark reports. The export does not alter a user's existing datasets. Each of the 50 symbol/source histories is exported separately so the workspace loads only the selected security.
+`frontend/` contains two static pages: a five-step plain-language explanation and a research workspace. `scripts/export_walkthrough.py` runs the real engine against a fresh deterministic synthetic dataset in a temporary directory, then exports raw/canonical record comparisons, quarantine decisions, retained price histories, DuckDB answers, source snippets, and byte-identical measured benchmark reports. It also runs frozen NVIDIA/SanDisk CSVs through the existing strict OHLCV pipeline, validates the EIA WTI sample under a price-only contract, and exports the shared price analytics. The export does not alter a user's existing datasets. Each of the 13 instrument/source histories is exported separately so the workspace loads only the selected security.
 
 The walkthrough offers a labelled two-price mathematical example. The workspace filters stored observations by stock and inclusive dates, charts price/return/20-return volatility, shows paginated rows and quality details, and downloads the complete selected slice. It summarizes selected first-to-last price change and average selected volume; stored returns and rolling volatility are never recalculated after filtering. It does not execute Python ETL, upload CSVs, or run arbitrary SQL. An optional supplied pytest JUnit report certifies the displayed Python test result; a failing or empty report blocks certification/export. Paths are made portable and raw non-finite values are represented as strings in strict JSON. Checksums include the per-security history files. [Frontend instructions](../frontend/README.md) document build, refresh, downloads, and browser verification.
 
@@ -37,6 +37,7 @@ The walkthrough offers a labelled two-price mathematical example. The workspace 
 | `storage` | Zstd Parquet, immutable snapshots, manifest resolution, publication |
 | `pipeline`, `reporting` | Composition, input fingerprints, run metadata, JSON reports, structured logs |
 | `queries` | Restricted local SELECT queries and parameterized date/symbol slices |
+| `market_samples` | Frozen-source checksum verification, Yahoo/EIA response parsing, and positive spot-price validation; shared returns/volatility without invented OHLCV |
 | `sample_data` | Deterministic synthetic weekday OHLCV generation |
 | `benchmarking`, `_benchmark_worker` | Correctness gates, isolated measurements, JSON/Markdown reports |
 | `cli` | Typer commands and readable summaries |

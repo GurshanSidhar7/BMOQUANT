@@ -2,7 +2,8 @@ export const METRICS = {
   close: {
     label: "Close price",
     type: "price",
-    description: "Unadjusted synthetic closing price",
+    description:
+      "Provider price or synthetic close, as labelled for the selected instrument",
   },
   simple_return: {
     label: "Simple price return",
@@ -90,7 +91,9 @@ export function summarizeSlice(rows) {
     end: last.date,
     priceChange: last.close / first.close - 1,
     latestVolatility: last.realized_vol_20,
-    meanVolume: rows.reduce((sum, row) => sum + row.volume, 0) / rows.length,
+    meanVolume: rows.every((row) => Number.isFinite(row.volume))
+      ? rows.reduce((sum, row) => sum + row.volume, 0) / rows.length
+      : null,
     warningRows: rows.filter((row) => row._warnings.length > 0).length,
   };
 }
@@ -98,6 +101,9 @@ export function summarizeSlice(rows) {
 export const RESEARCH_COLUMNS = [
   "symbol",
   "source",
+  "data_kind",
+  "instrument_type",
+  "price_unit",
   "date",
   "open",
   "high",

@@ -44,15 +44,15 @@
     "negative_volume": 1,
     "nonfinite_price": 1
   },
-  "execution_timestamp": "2026-10-18T21:34:56.268175+00:00",
+  "execution_timestamp": "2026-10-19T14:54:57.143553+00:00",
   "input_file_count": 1,
   "input_files": [
     {
       "path": "data/raw/synthetic_prices.csv",
-      "sha256": "1ef933df83805fd41de0e71eb11f8b23efdd2b4664e9c58ff88d99a07c351ae9"
+      "sha256": "6d9f26b0e5a0437a7e7fe5d1c59d75a076a45aa0170a52eb551df9c7dbbfa0ce"
     }
   ],
-  "input_row_count": 65201,
+  "input_row_count": 13041,
   "missing_session_count": 1,
   "missing_values": {
     "close": 0,
@@ -72,7 +72,7 @@
     "pydantic": "2.14.1",
     "research-data-engine": "0.1.0"
   },
-  "processing_duration_seconds": 0.25351041700923815,
+  "processing_duration_seconds": 0.11295320800854824,
   "python": "3.12.15",
   "quarantined_row_count": 7,
   "rejected_categories": [],
@@ -80,7 +80,7 @@
     "synthetic_weekdays"
   ],
   "status": "published",
-  "valid_row_count": 65194,
+  "valid_row_count": 13034,
   "warning_counts": {
     "extreme_return": 2,
     "missing_expected_sessions": 1,

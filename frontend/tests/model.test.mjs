@@ -130,3 +130,28 @@ test("research summaries distinguish selected price change from the previous-obs
   assert.ok(RESEARCH_COLUMNS.includes("_source_row"));
   assert.ok(RESEARCH_COLUMNS.includes("_warnings"));
 });
+
+test("unavailable spot volume remains unavailable in summaries and CSV", async () => {
+  const { summarizeSlice, RESEARCH_COLUMNS } = await import("../model.mjs");
+  const spot = [
+    {
+      symbol: "WTI",
+      date: "2025-02-24",
+      close: 71.06,
+      volume: null,
+      open: null,
+      high: null,
+      low: null,
+      realized_vol_20: null,
+      _warnings: [],
+    },
+  ];
+  assert.equal(summarizeSlice(spot).meanVolume, null);
+  const csv = csvText(spot, RESEARCH_COLUMNS);
+  const header = csv.split("\n")[0].split(",");
+  const record = csv.split("\n")[1].split(",");
+  assert.equal(record[header.indexOf("volume")], "");
+  assert.equal(record[header.indexOf("open")], "");
+  assert.equal(record[header.indexOf("high")], "");
+  assert.equal(record[header.indexOf("low")], "");
+});
