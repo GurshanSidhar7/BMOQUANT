@@ -159,7 +159,7 @@ def demo(
     """Generate five years of SYNTHETIC weekday prices, quarantine defects, and query results."""
     try:
         settings = demo_config(directory)
-        console.print("SYNTHETIC data: 50 equities, 2021–2025; weekday calendar approximation.")
+        console.print("SYNTHETIC data: 10 equities, 2021–2025; weekday calendar approximation.")
         write_sample_csv(settings.input.path, dirty=True)
         run = run_ingestion(settings)
         _summary(run.report)

@@ -15,6 +15,8 @@ SPEC.loader.exec_module(exporter)
 @pytest.fixture(scope="module")
 def bundle(tmp_path_factory):
     directory = tmp_path_factory.mktemp("walkthrough-evidence")
+    (directory / "history").mkdir()
+    (directory / "history" / "049.json").write_text("obsolete synthetic history")
     result = exporter.export_walkthrough(directory)
     return directory, result
 
@@ -22,8 +24,8 @@ def bundle(tmp_path_factory):
 def test_export_preserves_actual_decisions_and_portable_strict_json(bundle):
     directory, result = bundle
     report = result["report"]
-    assert report["input_row_count"] == 65_201
-    assert report["valid_row_count"] + report["quarantined_row_count"] == 65_201
+    assert report["input_row_count"] == 13_041
+    assert report["valid_row_count"] + report["quarantined_row_count"] == 13_041
     bad = [row for row in result["records"] if row["status"] == "quarantined"]
     assert len(bad) == report["quarantined_row_count"] == 7
     assert sum("duplicate_key" in row["errors"] for row in bad) == 2
@@ -62,8 +64,12 @@ def test_failed_test_evidence_cannot_be_published(tmp_path):
 def test_workspace_covers_every_retained_security_and_keeps_prior_history(bundle):
     directory, result = bundle
     securities = result["workspace"]["securities"]
-    assert len(securities) == 50
-    assert sum(security["rows"] for security in securities) == result["report"]["valid_row_count"]
+    assert len(securities) == 13
+    assert sum(s["data_kind"] == "synthetic" for s in securities) == 10
+    assert {s["symbol"] for s in securities if s["data_kind"] == "real"} == {"NVDA", "SNDK", "WTI"}
+    assert len(list((directory / "history").glob("*.json"))) == 13
+    assert not (directory / "history" / "049.json").exists()
+    assert sum(security["rows"] for security in securities) == result["workspace"]["retained_rows"]
     keys = set()
     for security in securities:
         rows = json.loads((directory / security["path"]).read_text())

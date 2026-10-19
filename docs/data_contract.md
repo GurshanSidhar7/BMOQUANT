@@ -59,6 +59,14 @@ Rows sort by symbol, source, date. Quarantined rows never enter analytics. Retur
 
 These are **price returns**, not total shareholder returns. Synthetic prices and user-supplied unadjusted OHLCV have no split, dividend, currency, or corporate-action adjustment. A legitimate split may produce an extreme-return warning. Do not use this sample as investment evidence.
 
+## Frozen real samples and WTI's separate contract
+
+`examples/market_data/` contains attributed NVIDIA and SanDisk provider OHLCV plus EIA WTI Cushing spot assessments for February 24–December 31, 2025. The equity CSVs follow the canonical schema and run through `configs/real_equities.yaml`. Provider OHLC is preserved as supplied; adjusted-close values are not used. No additional corporate-action adjustment is performed by this project. Real samples use `calendar: none`.
+
+WTI is a price-only sample with exactly `symbol,date,close,source`, validated by `market_samples.load_spot_prices`. Dates and prices must be present, keys unique, and prices positive and finite. The adapter supports this positive-price 2025 window; signed commodity prices need another return definition. EIA's unpublished cells remain absent. The shared `calculate_price_analytics` function supplies price/log returns and trailing volatility without a volume dependency. WTI does not enter the equity OHLCV ingestion path with invented fields. Open/high/low/volume remain null in the website's common research CSV. Its units are USD per barrel, not shares or futures contracts.
+
+The source manifest records data kind, instrument type, units, provider and download URLs, retrieval time, observed date bounds, counts, and SHA-256 fingerprints. Synthetic and real records remain separate in their quality reports. The workspace CSV includes `data_kind`, `instrument_type`, and `price_unit` so those distinctions survive download.
+
 ## Audit columns
 
 Clean files retain `_source_file`, `_source_row`, `_warnings: List[String]`, and `_missing_sessions: Int64`. `_source_row` counts logical CSV records with the header as row 1; multiline quoted records mean it may differ from a physical line number. In-memory validation uses `<memory>` and record numbers starting at one.

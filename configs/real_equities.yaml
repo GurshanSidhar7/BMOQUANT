@@ -1,0 +1,15 @@
+dataset: real_equities
+input:
+  path: ../examples/market_data/equities
+  format: csv
+  source: yahoo_finance
+  date_format: "%Y-%m-%d"
+validation:
+  duplicate_policy: reject
+  invalid_price_policy: reject
+  missing_value_policy: reject
+  malformed_value_policy: reject
+  calendar: none
+output:
+  path: ../data/processed/real_equities
+  format: parquet

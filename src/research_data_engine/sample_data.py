@@ -8,8 +8,8 @@ import polars as pl
 from research_data_engine.config import InputConfig, OutputConfig, PipelineConfig, ValidationConfig
 
 
-def generate_prices(*, symbols: int = 50, rows: int | None = None, seed: int = 42) -> pl.DataFrame:
-    """Default: 50 synthetic securities, Jan 2021–Dec 2025 (65,200 weekday observations)."""
+def generate_prices(*, symbols: int = 10, rows: int | None = None, seed: int = 42) -> pl.DataFrame:
+    """Default: 10 synthetic securities, Jan 2021–Dec 2025 (13,040 weekday observations)."""
     if symbols < 1 or (rows is not None and rows < 1):
         raise ValueError("symbols and rows must be positive")
     sessions = (
@@ -46,7 +46,7 @@ def write_sample_csv(
     path: str | Path,
     *,
     dirty: bool = False,
-    symbols: int = 50,
+    symbols: int = 10,
     rows: int | None = None,
     seed: int = 42,
 ) -> Path:

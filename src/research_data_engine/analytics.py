@@ -25,11 +25,11 @@ def with_returns(frame: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
-def calculate_analytics(frame: pl.LazyFrame) -> pl.LazyFrame:
-    """Sample volatility (ddof=1), 252 annualization, full trailing windows only.
+def calculate_price_analytics(frame: pl.LazyFrame) -> pl.LazyFrame:
+    """Price-only analytics shared by equities and positive commodity spot samples.
 
     Twenty log returns require 21 prices. Missing sessions are never interpolated.
-    Dollar volume is close * volume, an approximation to traded notional.
+    Sample volatility uses ddof=1, 252 annualization, and full trailing windows.
     """
     return with_returns(frame).with_columns(
         *[
@@ -39,6 +39,12 @@ def calculate_analytics(frame: pl.LazyFrame) -> pl.LazyFrame:
             ).alias(f"realized_vol_{w}")
             for w in (20, 30)
         ],
+    )
+
+
+def calculate_analytics(frame: pl.LazyFrame) -> pl.LazyFrame:
+    """OHLCV analytics, including observed volume and approximate traded notional."""
+    return calculate_price_analytics(frame).with_columns(
         pl.col("volume").rolling_mean(20, min_samples=20).over(GROUPS).alias("average_volume_20"),
         (pl.col("close") * pl.col("volume")).alias("dollar_volume"),
     )

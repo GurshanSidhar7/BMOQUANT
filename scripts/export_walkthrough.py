@@ -1,7 +1,7 @@
 """Export a manager-facing walkthrough from actual Python pipeline and DuckDB outputs.
 
 No original datasets are changed. All processing runs in a disposable directory.
-The exported JSON is strict, portable, synthetic, and safe to serve as static assets.
+Synthetic checks and frozen real samples remain separate and explicitly labelled.
 """
 
 import argparse
@@ -9,6 +9,7 @@ import ast
 import hashlib
 import json
 import math
+import shutil
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -19,7 +20,9 @@ from typing import Any
 import polars as pl
 
 from research_data_engine import QueryEngine, ingest, validate_prices
+from research_data_engine.config import load_config
 from research_data_engine.ingestion import scan_prices
+from research_data_engine.market_samples import load_spot_prices, verified_manifest
 from research_data_engine.reporting import utc_now, write_json
 from research_data_engine.sample_data import demo_config, write_sample_csv
 
@@ -73,6 +76,77 @@ def verification_report(path: Path | None) -> dict[str, Any]:
         "recorded_at": utc_now(),
         "scope": "Python project tests; browser checks are reported separately",
     }
+
+
+def export_market_samples(output: Path, temporary: Path) -> tuple[list, dict]:
+    directory = ROOT / "examples" / "market_data"
+    manifest = verified_manifest(directory)
+    source_directory = temporary / "market-input"
+    shutil.copytree(directory, source_directory)
+    shutil.copytree(directory, output / "market-data", dirs_exist_ok=True)
+    config = load_config(ROOT / "configs" / "real_equities.yaml")
+    config.input.path = source_directory / "equities"
+    config.output.path = temporary / "processed" / "real_equities"
+    run = ingest(config)
+    equities = pl.read_parquet(run.snapshot.prices_path)
+    spot = load_spot_prices(source_directory / "spot" / "WTI.csv").with_columns(
+        *[pl.lit(None, dtype=pl.Float64).alias(c) for c in ("open", "high", "low")],
+        pl.lit(None, dtype=pl.Int64).alias("volume"),
+    )
+    spot_report = {
+        "dataset": "wti_spot",
+        "input_row_count": spot.height,
+        "valid_row_count": spot.height,
+        "quarantined_row_count": 0,
+        "errors_by_category": {},
+        "warning_counts": {
+            "extreme_return": spot.filter(pl.col("simple_return").abs() > 0.25).height
+        },
+        "calendar": "none",
+        "status": "validated",
+        "contract": "Positive daily spot prices. OHLC and trading volume are not supplied.",
+        "source": "U.S. Energy Information Administration",
+        "data_kind": "real",
+    }
+    datasets = {
+        "real_equities": {
+            "title": "Real equity samples · NVIDIA and SanDisk",
+            "report": portable(run.report, temporary),
+            "records": [],
+            "report_path": "real-equities-report.json",
+            "description": (
+                "Both downloaded equity CSV files; strict OHLCV checks; no injected errors."
+            ),
+        },
+        "wti_spot": {
+            "title": "Real WTI Cushing spot-price sample",
+            "report": spot_report,
+            "records": [],
+            "report_path": "wti-spot-report.json",
+            "description": (
+                "The EIA price-only sample. Unpublished dates remain absent; "
+                "no OHLC or volume is invented."
+            ),
+        },
+    }
+    for dataset in datasets.values():
+        write_json(output / dataset["report_path"], dataset["report"])
+    groups = []
+    for sample in manifest["samples"]:
+        is_spot = sample["instrument_type"] == "commodity_spot"
+        frame = spot if is_spot else equities.filter(pl.col("symbol") == sample["symbol"])
+        groups.append(
+            (
+                {
+                    **sample,
+                    "dataset_id": "wti_spot" if is_spot else "real_equities",
+                    "input_path": f"market-data/{sample['path']}",
+                    "file": Path(sample["path"]).name,
+                },
+                frame,
+            )
+        )
+    return groups, datasets
 
 
 def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[str, Any]:
@@ -169,11 +243,13 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
             "_source_row",
             "_warnings",
         ]
-        for symbol in ("SYN0000", "SYN0001", "SYN0012"):
+        for symbol in ("SYN0000", "SYN0001", "SYN0009"):
             series[symbol] = clean.filter(pl.col("symbol") == symbol).select(columns).to_dicts()
         # Load one security at a time in the browser; financial calculations still
         # come from the same validated Parquet snapshot, including pre-start history.
         history_directory = output / "history"
+        if history_directory.exists():
+            shutil.rmtree(history_directory)
         history_directory.mkdir(exist_ok=True)
         securities = []
         workspace_columns = [
@@ -190,9 +266,26 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
             "_source_row",
             "_warnings",
         ]
-        for index, group in enumerate(
-            clean.partition_by(["symbol", "source"], maintain_order=True)
-        ):
+        groups, datasets = export_market_samples(output, temporary)
+        for group in clean.partition_by(["symbol", "source"], maintain_order=True):
+            groups.append(
+                (
+                    {
+                        "name": group["symbol"][0],
+                        "data_kind": "synthetic",
+                        "instrument_type": "equity",
+                        "has_volume": True,
+                        "dataset_id": "synthetic",
+                        "provider": "Seeded Python generator",
+                        "price_basis": "Generated, unadjusted OHLCV with deliberate test defects.",
+                        "unit": "Illustrative USD per share",
+                        "file": "synthetic_prices.csv",
+                        "input_path": "synthetic-sample.csv",
+                    },
+                    group,
+                )
+            )
+        for index, (description, group) in enumerate(groups):
             relative = f"history/{index:03d}.json"
             (output / relative).write_text(
                 json.dumps(
@@ -204,6 +297,7 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
             )
             securities.append(
                 {
+                    **description,
                     "symbol": group["symbol"][0],
                     "source": group["source"][0],
                     "start": group["date"].min().isoformat(),
@@ -239,14 +333,15 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
             for threshold in (0.05, 0.10, 0.25, 0.5, 1.0, 3.0)
         ]
         payload = {
-            "schema_version": 1,
+            "schema_version": 2,
             "generated_at": utc_now(),
             "mode": "Recorded Python outputs; this page does not execute the Python pipeline",
             "repository": REPOSITORY,
             "backend_commit": subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
             ).strip(),
-            "data_kind": "SYNTHETIC unadjusted OHLCV",
+            "data_kind": "Synthetic validation fixture plus three real historical samples",
+            "report_scope": "synthetic",
             "report": portable(run.report, temporary),
             "snapshot": {
                 "version": run.snapshot.version,
@@ -257,7 +352,24 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
             },
             "records": portable(records),
             "series": portable(series),
-            "workspace": {"securities": securities},
+            "workspace": {
+                "securities": securities,
+                "retained_rows": sum(security["rows"] for security in securities),
+                "synthetic_count": 10,
+                "real_count": 3,
+            },
+            "datasets": {
+                "synthetic": {
+                    "title": "Synthetic quality-check fixture · 10 stocks",
+                    "report": portable(run.report, temporary),
+                    "records": portable(records),
+                    "report_path": "pipeline-report.json",
+                    "description": (
+                        "Generated observations with deliberate errors to test the rules."
+                    ),
+                },
+                **datasets,
+            },
             "queries": portable(queries),
             "policy_preview": {
                 "reject": {
@@ -275,7 +387,9 @@ def export_walkthrough(output: Path, test_report: Path | None = None) -> dict[st
                     ("normalization", "transformations", "normalize_prices"),
                     ("validation", "validation", "validate_prices"),
                     ("returns", "analytics", "with_returns"),
+                    ("price_analytics", "analytics", "calculate_price_analytics"),
                     ("analytics", "analytics", "calculate_analytics"),
+                    ("spot_sample", "market_samples", "load_spot_prices"),
                     ("storage", "storage", "publish_snapshot"),
                     ("query", "queries", "query"),
                     ("benchmark", "benchmarking", "verify_equivalence"),

@@ -36,9 +36,9 @@ def test_full_demo_validate_and_query(tmp_path):
     assert query.exit_code == 0, query.stdout
     manifest = json.loads((dataset / "CURRENT.json").read_text())
     report = json.loads((dataset / "versions" / manifest["version"] / "report.json").read_text())
-    assert report["input_row_count"] == 65_201
+    assert report["input_row_count"] == 13_041
     assert report["quarantined_row_count"] == 7
-    assert report["valid_row_count"] == 65_194
+    assert report["valid_row_count"] == 13_034
 
 
 def test_generator_is_deterministic(tmp_path):

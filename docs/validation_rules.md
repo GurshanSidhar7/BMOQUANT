@@ -47,7 +47,7 @@ All lags and consecutive counts group by symbol **and source**, and use only pas
 
 ## Example audit
 
-`research-data demo` creates 65,200 synthetic observations, injects five erroneous rows, and appends a duplicate of an existing row. The duplicate **pair** is quarantined, yielding 65,201 input rows, 7 quarantined records, and 65,194 valid records. The supplied errors cover a missing symbol, unparseable date, negative volume, negative close, non-finite close, and duplicate key. An extreme price movement and a volume spike remain in the clean output with warnings.
+`research-data demo` creates 13,040 synthetic observations, injects five erroneous rows, and appends a duplicate of an existing row. The duplicate **pair** is quarantined, yielding 13,041 input rows, 7 quarantined records, and 13,034 valid records. The supplied errors cover a missing symbol, unparseable date, negative volume, negative close, non-finite close, and duplicate key. An extreme price movement and a volume spike remain in the clean output with warnings.
 
 Inspect the active report and quarantine through the manifest rather than hardcoding a run ID:
 
